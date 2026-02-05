@@ -1,4 +1,6 @@
 const API_BASE = `http://${window.location.hostname}:5001/race`;
+const AUTH_BASE = `http://${window.location.hostname}:5001/auth`;
+
 let participants = [];
 let activeIndex = -1;
 let currentRace = localStorage.getItem('currentRace') || '';
@@ -8,7 +10,6 @@ let startMode = localStorage.getItem('startMode') || 'direct';
 let editMode = false;
 let editingIndex = -1;
 let uploadedLogoData = null;
-
 
 const DEFAULT_COLUMNS = [
     { id: 'number', label: 'STARTNR.', visible: true, required: true, key: 'number' },
@@ -22,21 +23,17 @@ const DEFAULT_COLUMNS = [
 ];
 
 let columnConfig = JSON.parse(localStorage.getItem('columnConfig')) || [...DEFAULT_COLUMNS];
-
-// Sync with DEFAULT_COLUMNS in case of codebase updates (same ID but different properties)
 columnConfig = DEFAULT_COLUMNS.map(def => {
     const existing = columnConfig.find(c => c.id === def.id);
     if (!existing) return def;
     const synced = { ...def, ...existing };
-    if (def.required) synced.visible = true; // Force required columns to be visible
+    if (def.required) synced.visible = true;
     return synced;
 });
-// Preserve the order of saved config, but filter out legacy columns
 const savedOrderKeys = columnConfig.map(c => c.id);
 columnConfig = [...columnConfig].sort((a, b) => savedOrderKeys.indexOf(a.id) - savedOrderKeys.indexOf(b.id));
 
 const startAudio = new Audio('race-start-beeps-125125.mp3');
-
 
 // DOM Elements
 const csvFileInput = document.getElementById('csvFile');
@@ -89,23 +86,91 @@ const backendError = document.getElementById('backendError');
 const columnConfigList = document.getElementById('columnConfigList');
 const resetColumnsBtn = document.getElementById('resetColumnsBtn');
 const raceTableHead = document.querySelector('#raceTable thead tr');
+const logoutBtn = document.getElementById('logoutBtn');
 
+// Auth Elements
+const loginModal = document.getElementById('loginModal');
+const loginForm = document.getElementById('loginForm');
+const loginUser = document.getElementById('loginUser');
+const loginPass = document.getElementById('loginPass');
+const loginError = document.getElementById('loginError');
 
 async function init() {
     updateSettingsUI();
-    await fetchSessions();
-    if (currentRace) {
-        sessionSelect.value = currentRace;
-        await fetchParticipants();
+    try {
+        await checkAuthStatus();
+        await fetchSessions();
+        if (currentRace) {
+            sessionSelect.value = currentRace;
+            await fetchParticipants();
+        }
+    } catch (e) {
+        console.log("Initial load failed or auth required");
     }
     renderColumnConfig();
     startPolling();
 }
 
+async function checkAuthStatus() {
+    try {
+        const res = await fetch(`${AUTH_BASE}/status`, { signal: AbortSignal.timeout(2000), credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.logged_in) {
+                if (loginModal) loginModal.style.display = 'none';
+                return true;
+            }
+        }
+    } catch (e) {
+        console.log("Auth check failed", e);
+    }
+    return false;
+}
+
+if (loginForm) {
+    loginForm.onsubmit = async (e) => {
+        e.preventDefault();
+        const username = loginUser.value;
+        const password = loginPass.value;
+        try {
+            const res = await fetch(`${AUTH_BASE}/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password }),
+                credentials: 'include'
+            });
+            if (res.ok) {
+                loginModal.style.display = 'none';
+                loginError.style.display = 'none';
+                loginPass.value = '';
+                await fetchSessions();
+                if (currentRace) await fetchParticipants();
+            } else {
+                loginError.style.display = 'block';
+            }
+        } catch (err) {
+            loginError.textContent = "Verbindungsfehler";
+            loginError.style.display = 'block';
+        }
+    };
+}
+
+if (logoutBtn) {
+    logoutBtn.onclick = async () => {
+        if (!confirm('Wirklich abmelden?')) return;
+        try {
+            await fetch(`${AUTH_BASE}/logout`, { method: 'POST', credentials: 'include' });
+            window.location.reload();
+        } catch (e) {
+            console.error("Logout failed", e);
+            window.location.reload();
+        }
+    };
+}
+
 function updateSettingsUI() {
     if (modeSwitch) modeSwitch.checked = (startMode === 'delayed');
     if (editSwitch) editSwitch.checked = editMode;
-
     if (editActionsView) editActionsView.style.display = (editMode && currentRace) ? 'block' : 'none';
     if (actionsHeader) actionsHeader.style.display = (editMode && currentRace) ? 'table-cell' : 'none';
     renderTable();
@@ -303,7 +368,6 @@ function renderTable() {
     }
 }
 
-
 setInterval(() => {
     if (activeIndex !== -1 && participants[activeIndex]) {
         const p = participants[activeIndex];
@@ -346,14 +410,11 @@ function updateActiveDisplay() {
     }
     const p = participants[activeIndex];
     activeSection.style.display = 'block';
-
     const tagsHtml = p.tags && p.tags.length > 0
         ? `<div class="tag-badges center-tags mobile-hideable-tags">${p.tags.map(t => `<span class="tag-badge">${t}</span>`).join('')}</div>`
         : '';
-
     activeName.innerHTML = `${p.name}${tagsHtml}`;
     activeStartNumber.textContent = `#${p.start_number}`;
-
     if (p.start_time && !p.end_time) {
         mainActionBtn.textContent = 'STOP DRÜCKEN';
         mainActionBtn.style.background = 'var(--accent-red)';
@@ -368,7 +429,6 @@ async function handleMainAction() {
     if (!currentRace || activeIndex === -1 || editMode) return;
     const p = participants[activeIndex];
     const now = new Date().toISOString();
-
     if (!p.start_time || p.end_time) {
         if (startMode === 'delayed') {
             mainActionBtn.disabled = true;
@@ -389,7 +449,6 @@ async function handleMainAction() {
         const sortedLocal = [...participants].sort((a, b) => a.start_number - b.start_number);
         const currentLocalIdx = sortedLocal.findIndex(person => person.start_number === p.start_number);
         const nextPerson = sortedLocal.find((person, i) => i > currentLocalIdx && !person.end_time);
-
         if (nextPerson) {
             activeIndex = participants.findIndex(person => person.start_number === nextPerson.start_number);
         }
@@ -397,7 +456,6 @@ async function handleMainAction() {
     }
 }
 
-// Participant management
 addParticipantBtn.onclick = () => {
     editingIndex = -1;
     editModalTitle.textContent = "Neuer Teilnehmer";
@@ -406,7 +464,6 @@ addParticipantBtn.onclick = () => {
     editTags.value = "";
     editParticipantModal.classList.add('active');
 };
-
 window.openEditModal = (index) => {
     editingIndex = index;
     const p = participants[index];
@@ -416,25 +473,20 @@ window.openEditModal = (index) => {
     editTags.value = p.tags ? p.tags.join(', ') : '';
     editParticipantModal.classList.add('active');
 };
-
 cancelEditBtn.onclick = () => editParticipantModal.classList.remove('active');
-
 saveParticipantBtn.onclick = async () => {
     const name = editName.value.trim();
     const sn = parseInt(editNumber.value);
     const tags = editTags.value.split(',').map(t => t.trim()).filter(t => t !== "");
-
     if (!name || isNaN(sn)) {
         alert("Bitte Name und Startnummer korrekt ausfüllen.");
         return;
     }
-
     const dup = participants.find((p, i) => p.start_number === sn && i !== editingIndex);
     if (dup) {
         alert(`Startnummer ${sn} wird bereits von ${dup.name} verwendet.`);
         return;
     }
-
     if (editingIndex === -1) {
         participants.push({
             id: sn.toString(), name: name, start_number: sn, tags: tags,
@@ -444,13 +496,11 @@ saveParticipantBtn.onclick = async () => {
         const p = participants[editingIndex];
         p.name = name; p.start_number = sn; p.id = sn.toString(); p.tags = tags;
     }
-
     participants.sort((a, b) => a.start_number - b.start_number);
     await apiCall(`/${currentRace}/people`, 'POST', participants);
     editParticipantModal.classList.remove('active');
     await fetchParticipants();
 };
-
 window.deleteParticipant = async (index) => {
     if (!confirm(`Teilnehmer ${participants[index].name} wirklich löschen?`)) return;
     participants.splice(index, 1);
@@ -458,16 +508,13 @@ window.deleteParticipant = async (index) => {
     await fetchParticipants();
 };
 
-// Export & Print Logic
 function openExportMenu() {
-    updateTagFilter(); // Ensure options are fresh
-    exportTagFilter.value = currentTag; // Sync with main filter
+    updateTagFilter();
+    exportTagFilter.value = currentTag;
     exportModal.classList.add('active');
 }
-
 downloadCsvBtn.onclick = openExportMenu;
 closeExport.onclick = () => exportModal.classList.remove('active');
-
 exportLogoInput.onchange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -482,14 +529,10 @@ exportLogoInput.onchange = (e) => {
         reader.readAsDataURL(file);
     }
 };
-
 btnPreparePDF.onclick = () => prepareAndPrint();
-
 btnExportExcel.onclick = () => {
     const filter = exportTagFilter.value;
     const sortBy = document.getElementById('exportSortBy').value;
-
-    // Column configuration
     const cols = [
         { id: 'col-rank', label: 'Platz', key: 'rank' },
         { id: 'col-number', label: 'Startnr.', key: 'number' },
@@ -502,27 +545,17 @@ btnExportExcel.onclick = () => {
     ].filter(c => document.getElementById(c.id).checked);
 
     let list = participants.filter(p => !filter || (p.tags && p.tags.includes(filter)));
-    // For Excel, we might want all participants or just finished ones. 
-    // Usually export means results, so we stick to the CSV logic (finished only).
     list = list.filter(p => p.duration);
-
-    // 1. Initial Rank Calculation
     list.sort((a, b) => a.duration - b.duration);
     list.forEach((p, i) => {
-        if (i > 0 && p.duration === list[i - 1].duration) {
-            p.rank = list[i - 1].rank;
-        } else {
-            p.rank = i + 1;
-        }
+        p.rank = (i > 0 && p.duration === list[i - 1].duration) ? list[i - 1].rank : i + 1;
     });
     const winnerDuration = list.length > 0 ? list[0].duration : null;
 
-    // 2. Sort according to preference
     if (sortBy === 'number') list.sort((a, b) => a.start_number - b.start_number);
     else if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortBy === 'startTime') list.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 
-    // Prepare data for SheetJS
     const data = list.map(p => {
         const row = {};
         cols.forEach(c => {
@@ -533,15 +566,10 @@ btnExportExcel.onclick = () => {
             if (c.key === 'start') row[c.label] = p.start_time ? formatTime(p.start_time) : '';
             if (c.key === 'end') row[c.label] = p.end_time ? formatTime(p.end_time) : '';
             if (c.key === 'duration') row[c.label] = p.duration;
-            if (c.key === 'gap') {
-                if (p.rank === 1) row[c.label] = 'Bestzeit';
-                else if (winnerDuration) row[c.label] = `+${(p.duration - winnerDuration).toFixed(3)}s`;
-                else row[c.label] = '';
-            }
+            if (c.key === 'gap') row[c.label] = p.rank === 1 ? 'Bestzeit' : (winnerDuration ? `+${(p.duration - winnerDuration).toFixed(3)}s` : '');
         });
         return row;
     });
-
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
     XLSX.utils.book_append_sheet(wb, ws, "Ergebnisse");
@@ -569,8 +597,6 @@ btnExportRace.onclick = async () => {
 btnPrepareCSV.onclick = () => {
     const filter = exportTagFilter.value;
     const sortBy = document.getElementById('exportSortBy').value;
-
-    // Column configuration
     const cols = [
         { id: 'col-rank', label: 'Platz', key: 'rank' },
         { id: 'col-number', label: 'Startnr.', key: 'number' },
@@ -583,26 +609,15 @@ btnPrepareCSV.onclick = () => {
     ].filter(c => document.getElementById(c.id).checked);
 
     let list = participants.filter(p => !filter || (p.tags && p.tags.includes(filter)));
-    list = list.filter(p => p.duration); // Only finished for export usually
-
-    // 1. Initial Rank Calculation (always needed for gap/rank even if not sorted by it)
+    list = list.filter(p => p.duration);
     list.sort((a, b) => a.duration - b.duration);
-    list.forEach((p, i) => {
-        if (i > 0 && p.duration === list[i - 1].duration) {
-            p.rank = list[i - 1].rank;
-        } else {
-            p.rank = i + 1;
-        }
-    });
+    list.forEach((p, i) => { p.rank = (i > 0 && p.duration === list[i - 1].duration) ? list[i - 1].rank : i + 1; });
     const winnerDuration = list.length > 0 ? list[0].duration : null;
 
-    // 2. Sort according to user preference
     if (sortBy === 'number') list.sort((a, b) => a.start_number - b.start_number);
     else if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortBy === 'startTime') list.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-    // Default is already rank/duration sorted
 
-    // Generate CSV
     let csv = cols.map(c => c.label).join(',') + "\n";
     list.forEach(p => {
         const row = cols.map(c => {
@@ -618,7 +633,6 @@ btnPrepareCSV.onclick = () => {
         });
         csv += row.join(',') + "\n";
     });
-
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -627,13 +641,9 @@ btnPrepareCSV.onclick = () => {
     a.click();
 };
 
-// --- REWRITTEN PRINT LOGIC ---
 function prepareAndPrint() {
     const filter = exportTagFilter.value;
     const sortBy = document.getElementById('exportSortBy').value;
-    console.log("Prepare Print - Filter:", filter, "Sort:", sortBy);
-
-    // Column configuration
     const cols = [
         { id: 'col-rank', label: 'Platz', key: 'rank' },
         { id: 'col-number', label: 'Startnr.', key: 'number' },
@@ -647,8 +657,6 @@ function prepareAndPrint() {
 
     const raceTitle = currentRace ? currentRace.replace(/_/g, ' ') : 'Wettbewerb';
     const tagTitle = filter ? `Kategorie: ${filter}` : 'Gesamtwertung';
-
-    // Set Titles & Logo Visibility
     document.getElementById('printTitle').textContent = raceTitle;
     document.getElementById('printSubtitle').textContent = tagTitle;
 
@@ -660,39 +668,21 @@ function prepareAndPrint() {
         printLogo.removeAttribute('src');
     }
 
-    // Filter and Initial Rank Calculation
     let list = participants.filter(p => !filter || (p.tags && p.tags.includes(filter)));
     list = list.filter(p => p.duration);
-
     list.sort((a, b) => a.duration - b.duration);
-    list.forEach((p, i) => {
-        if (i > 0 && p.duration === list[i - 1].duration) {
-            p.rank = list[i - 1].rank;
-        } else {
-            p.rank = i + 1;
-        }
-    });
+    list.forEach((p, i) => { p.rank = (i > 0 && p.duration === list[i - 1].duration) ? list[i - 1].rank : i + 1; });
+
     const winnerDuration = list.length > 0 ? list[0].duration : null;
 
-    // Sort according to user preference
     if (sortBy === 'number') list.sort((a, b) => a.start_number - b.start_number);
     else if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
     else if (sortBy === 'startTime') list.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
 
-    // Render Table Header
     const printTable = document.getElementById('printTable');
-    printTable.innerHTML = `
-        <thead>
-            <tr>
-                ${cols.map(c => `<th>${c.label}</th>`).join('')}
-            </tr>
-        </thead>
-        <tbody id="printBody"></tbody>
-    `;
-
+    printTable.innerHTML = `<thead><tr>${cols.map(c => `<th>${c.label}</th>`).join('')}</tr></thead><tbody id="printBody"></tbody>`;
     const pBody = document.getElementById('printBody');
 
-    // Generate Table Rows
     list.forEach((p) => {
         const row = document.createElement('tr');
         row.innerHTML = cols.map(c => {
@@ -708,56 +698,26 @@ function prepareAndPrint() {
         }).join('');
         pBody.appendChild(row);
     });
-
-    // Toggle Modal and Start Printer
     exportModal.classList.remove('active');
-
-    // Delay print slightly to ensure DOM update is rendered by browser
-    setTimeout(() => {
-        window.print();
-    }, 250);
+    setTimeout(() => { window.print(); }, 250);
 }
 
-// Shortcuts (Cmd+P / Space / Arrows)
 window.onkeydown = (e) => {
     const isInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable;
-
-    // Space for Start/Stop
-    if (e.key === ' ' && !isInput) {
-        e.preventDefault();
-        handleMainAction();
-    }
-
-    // Arrows for Navigation
+    if (e.key === ' ' && !isInput) { e.preventDefault(); handleMainAction(); }
     if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && !isInput) {
         e.preventDefault();
         let displayList = participants.filter(p => !currentTag || (p.tags && p.tags.includes(currentTag)));
         displayList.sort((a, b) => a.start_number - b.start_number);
-
         if (displayList.length === 0) return;
-
-        let currentDisplayIdx = displayList.findIndex(p => participants.indexOf(p) === activeIndex);
-
-        if (e.key === 'ArrowDown') {
-            currentDisplayIdx = (currentDisplayIdx === -1) ? 0 : Math.min(currentDisplayIdx + 1, displayList.length - 1);
-        } else {
-            currentDisplayIdx = (currentDisplayIdx === -1) ? 0 : Math.max(currentDisplayIdx - 1, 0);
-        }
-
-        const nextParticipant = displayList[currentDisplayIdx];
-        const globalIndex = participants.indexOf(nextParticipant);
-        selectParticipant(globalIndex);
-
-        // Ensure the active row is visible
+        let pIndex = displayList.findIndex(p => participants.indexOf(p) === activeIndex);
+        if (e.key === 'ArrowDown') pIndex = Math.min(pIndex + 1, displayList.length - 1);
+        else pIndex = Math.max(pIndex - 1, 0);
+        selectParticipant(participants.indexOf(displayList[pIndex]));
         const activeRow = document.querySelector('.active-row');
         if (activeRow) activeRow.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
-
-    // Print shortcut
-    if ((e.metaKey || e.ctrlKey) && e.key === 'p') {
-        e.preventDefault();
-        openExportMenu();
-    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'p') { e.preventDefault(); openExportMenu(); }
 };
 
 async function apiCall(endpoint, method, body = null) {
@@ -765,17 +725,22 @@ async function apiCall(endpoint, method, body = null) {
         const res = await fetch(`${API_BASE}${endpoint}`, {
             method,
             headers: { 'Content-Type': 'application/json' },
-            body: body ? JSON.stringify(body) : null
+            body: body ? JSON.stringify(body) : null,
+            credentials: 'include'
         });
-
-        // If we reach here, the connection is alive
         if (backendError) backendError.style.display = 'none';
-
+        if (res.status === 401) {
+            if (loginModal && loginModal.style.display !== 'flex') {
+                loginModal.style.display = 'flex';
+                loginUser.focus();
+            }
+            throw new Error('Unauthorized');
+        }
         if (!res.ok) throw new Error('API Error');
         if (res.status === 204) return null;
         return await res.json();
     } catch (err) {
-        // Network error or server down
+        if (err.message === 'Unauthorized') throw err;
         if (backendError) backendError.style.display = 'block';
         throw err;
     }
@@ -784,16 +749,13 @@ async function apiCall(endpoint, method, body = null) {
 function renderColumnConfig() {
     if (!columnConfigList) return;
     columnConfigList.innerHTML = '';
-
     columnConfig.forEach((col, index) => {
         const wrapper = document.createElement('div');
         wrapper.className = 'column-config-item-wrapper' + (!col.visible ? ' showing' : '');
-
         const item = document.createElement('div');
         item.className = 'column-config-item' + (col.required ? ' required' : '');
         item.draggable = true;
         item.dataset.index = index;
-
         if (window.currentlyDraggingId === col.id) {
             item.classList.add('dragging');
             item.style.opacity = '0.4';

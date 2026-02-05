@@ -143,6 +143,8 @@
                     <button id="resetColumnsBtn" class="btn btn-outline"
                         style="width: 100%; border: none; font-size: 0.85rem; opacity: 0.6;">Standard-Layout
                         wiederherstellen</button>
+                    <button id="logoutBtn" class="btn btn-outline"
+                        style="width: 100%; border: 1px solid #ff4d4d; color: #ff4d4d; margin-top: 0.5rem;">Abmelden</button>
                 </div>
             </div>
         </div>
@@ -181,6 +183,33 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+
+    <!-- Login Modal - Forced Overlay -->
+    <div id="loginModal" class="modal"
+        style="display: none; z-index: 9999; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px);">
+        <div class="modal-content card" style="max-width: 400px;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Zugriff</h1>
+                <p class="subtitle">Bitte authentifizieren Sie sich.</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="setting-item">
+                    <label>Benutzername</label>
+                    <input type="text" id="loginUser" class="form-input" placeholder="admin" required autofocus>
+                </div>
+                <div class="setting-item">
+                    <label>Passwort</label>
+                    <input type="password" id="loginPass" class="form-input" placeholder="••••••••" required>
+                </div>
+                <div id="loginError" style="color: #ff4d4d; margin-bottom: 1rem; display: none; font-size: 0.9rem;">
+                    Zugangsdaten inkorrekt.
+                </div>
+                <button type="submit" class="btn btn-primary"
+                    style="width: 100%; justify-content: center;">Einloggen</button>
+            </form>
         </div>
     </div>
 
