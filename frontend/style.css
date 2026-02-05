@@ -732,14 +732,14 @@ tr.active-row td {
 }
 
 /* Liquid Glass Switch - Maxuiux Design */
-.ios-switch {
+.moveswitch {
     position: relative;
     display: inline-block;
     width: 52px;
     height: 32px;
 }
 
-.ios-switch input {
+.moveswitch input {
     opacity: 0;
     width: 0;
     height: 0;
@@ -752,7 +752,7 @@ tr.active-row td {
     left: 0;
     right: 0;
     bottom: 0;
-    background: #D6D6DA;
+    background: #c03d00;
     transition: 0.4s;
     border-radius: 34px;
 }
@@ -784,7 +784,7 @@ tr.active-row td {
 }
 
 input:checked+.switch-slider {
-    background: linear-gradient(117deg, #49a3fc 0%, #3681ee 100%);
+    background: linear-gradient(117deg, #06b89d 0%, #10b098 100%);
 }
 
 input:checked+.switch-slider::after {
