@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Race Timer High-Performance</title>
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Outfit:wght@100..900&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+
+<body>
+    <div id="backendError" class="backend-error-notification" style="display: none;">
+        <div class="error-content">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                </path>
+                <line x1="12" y1="9" x2="12" y2="13"></line>
+                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+            </svg>
+            <span>Verbindung zum Backend verloren - Bitte Backend starten!</span>
+        </div>
+    </div>
+    <div class="container no-print">
+        <header>
+            <h1>ZEITNEHMUNG</h1>
+            <p class="subtitle">Präzise. Zuverlässig. Plattformübergreifend.</p>
+        </header>
+
+        <!-- Unified Control Bar -->
+        <div class="control-bar">
+            <div class="control-group-left">
+                <select id="sessionSelect" class="session-select">
+                    <option value="">-- Lauf Auswählen --</option>
+                </select>
+                <select id="tagFilter" class="session-select" style="min-width: 150px;">
+                    <option value="">Alle Kategorien</option>
+                </select>
+                <div class="action-buttons">
+                    <button id="downloadCsvBtn" class="btn-icon" title="Export Menü">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <span>Export</span>
+                    </button>
+                    <button id="deleteSessionBtn" class="btn-icon danger-icon" title="Lauf löschen">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-group-right">
+                <div class="divider"></div>
+                <div class="import-section">
+                    <button id="importCsvBtn" class="btn-icon import-btn" title="CSV Import">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        <span>Neu</span>
+                    </button>
+                    <input type="file" id="csvFile" accept=".csv,.xlsx,.race" style="display: none;">
+                </div>
+                <button id="settingsBtn" class="btn-icon" title="Einstellungen">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path
+                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="modal">
+            <div class="modal-content card">
+                <h2>Einstellungen</h2>
+
+                <div class="settings-section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                    </svg>
+                    Modus & Steuerung
+                </div>
+
+                <div class="setting-item flex-between">
+                    <label>Verzögerter Start (Beeps):</label>
+                    <label class="ios-switch">
+                        <input type="checkbox" id="modeSwitch">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+                <div class="setting-item flex-between">
+                    <label>Bearbeitungs-Modus:</label>
+                    <label class="ios-switch">
+                        <input type="checkbox" id="editSwitch">
+                        <span class="switch-slider"></span>
+                    </label>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="settings-section-title">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path
+                            d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18">
+                        </path>
+                    </svg>
+                    Spalten konfigurieren
+                </div>
+                <p class="subtitle" style="font-size: 0.8rem; margin-bottom: 1.2rem; opacity: 0.8;">
+                    Halte ein Element gedrückt, um es zu verschieben.
+                </p>
+
+                <div id="columnConfigList" class="column-config-list">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="modal-actions" style="margin-top: 2rem; flex-direction: column; gap: 0.75rem;">
+                    <button id="closeSettings" class="btn btn-primary" style="width: 100%;">Speichern &
+                        Schließen</button>
+                    <button id="resetColumnsBtn" class="btn btn-outline"
+                        style="width: 100%; border: none; font-size: 0.85rem; opacity: 0.6;">Standard-Layout
+                        wiederherstellen</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Focused Person -->
+        <div id="activeSection" class="card active-person-card" style="display: none;">
+            <div class="start-number-badge" id="activeStartNumber">#--</div>
+            <div class="person-name" id="activeName">Niemand ausgewählt</div>
+            <div class="timer-display" id="mainTimer">00:00:00.0</div>
+            <button id="mainActionBtn" class="btn btn-start">START DRÜCKEN</button>
+        </div>
+
+        <!-- Participants List -->
+        <div class="card">
+            <div id="editActions" style="display: none; margin-bottom: 1rem;">
+                <button id="addParticipantBtn" class="btn btn-start" style="width: auto; padding: 0.6rem 1.2rem;">+
+                    Teilnehmer hinzufügen</button>
+            </div>
+            <div class="table-container">
+                <table id="raceTable">
+                    <thead>
+                        <tr>
+                            <th>Startnr.</th>
+                            <th>Name</th>
+                            <th class="desktop-only">Status</th>
+                            <th>Startzeit</th>
+                            <th>Dauer</th>
+                            <th>Endzeit</th>
+                            <th>Platz</th>
+                            <th>Rückstand</th>
+                            <th id="actionsHeader" style="display: none;">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody id="raceBody">
+                        <!-- Rows will be injected here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Participant Modal -->
+    <div id="editParticipantModal" class="modal">
+        <div class="modal-content card">
+            <h2 id="editModalTitle">Teilnehmer bearbeiten</h2>
+            <div class="setting-item">
+                <label>Name</label>
+                <input type="text" id="editName" class="form-input" placeholder="Vorname Nachname">
+            </div>
+            <div class="setting-item">
+                <label>Startnummer</label>
+                <input type="number" id="editNumber" class="form-input">
+            </div>
+            <div class="setting-item">
+                <label>Kategorien (Tags, mit Komma trennen)</label>
+                <input type="text" id="editTags" class="form-input" list="availableTags" placeholder="U18, PRO">
+                <datalist id="availableTags"></datalist>
+            </div>
+            <div class="modal-actions">
+                <button id="saveParticipant" class="btn btn-primary">Speichern</button>
+                <button id="cancelEdit" class="btn btn-outline">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export / Print Modal -->
+    <div id="exportModal" class="modal">
+        <div class="modal-content card">
+            <h2>Export & Drucken</h2>
+            <p class="subtitle" style="margin-bottom: 1.5rem;">Ergebnisliste generieren</p>
+
+            <div class="setting-item">
+                <label>Wettbewerbs-Logo</label>
+                <input type="file" id="exportLogoInput" accept="image/*" class="form-input">
+                <div id="logoPreviewContainer" style="margin-top: 1rem; display: none; text-align: center;">
+                    <img id="exportLogoPreview" style="max-height: 80px; border-radius: 8px;">
+                </div>
+            </div>
+
+            <div class="setting-item">
+                <label>Kategorie filtern</label>
+                <select id="exportTagFilter" class="session-select" style="width: 100%;">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <label>Sortierung nach</label>
+                <select id="exportSortBy" class="session-select" style="width: 100%;">
+                    <option value="rank">Platzierung</option>
+                    <option value="number">Startnummer</option>
+                    <option value="name">Name</option>
+                    <option value="startTime">Startzeit</option>
+                </select>
+            </div>
+
+            <div class="setting-item">
+                <label>Spalten im Export</label>
+                <div class="checkbox-group"
+                    style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem;">
+                    <label class="check-container"> Platz <input type="checkbox" id="col-rank" checked> <span
+                            class="checkmark"></span></label>
+                    <label class="check-container"> Startnr. <input type="checkbox" id="col-number" checked> <span
+                            class="checkmark"></span></label>
+                    <label class="check-container"> Name <input type="checkbox" id="col-name" checked> <span
+                            class="checkmark"></span></label>
+                    <label class="check-container"> Kategorie <input type="checkbox" id="col-tags" checked> <span
+                            class="checkmark"></span></label>
+                    <label class="check-container"> Startzeit <input type="checkbox" id="col-start" checked> <span
+                            class="checkmark"></span></label>
+                    <label class="check-container"> Endzeit <input type="checkbox" id="col-end" checked> <span
+                            class="checkmark"></span></label>
+                    <label class="check-container"> Dauer <input type="checkbox" id="col-duration" checked> <span
+                            class="checkmark"></span></label>
+                    <label class="check-container"> Rückstand <input type="checkbox" id="col-gap" checked> <span
+                            class="checkmark"></span></label>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="flex-direction: column; gap: 0.75rem;">
+                <button id="btnPreparePDF" class="btn btn-primary" style="width: 100%;">Druckansicht (PDF)</button>
+                <button id="btnExportExcel" class="btn btn-outline" style="width: 100%;">Excel (.xlsx)
+                    herunterladen</button>
+                <button id="btnExportRace" class="btn btn-outline" style="width: 100%;">Full Backup (.race)
+                    exportieren</button>
+                <button id="btnPrepareCSV" class="btn btn-outline" style="width: 100%;">CSV herunterladen</button>
+                <button id="closeExport" class="btn btn-outline"
+                    style="width: 100%; border:none; color: var(--text-muted);">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Print View (Only visible when printing) -->
+    <div id="printView" class="print-only">
+        <div class="print-header">
+            <img id="printLogo" src="" style="display: none; max-height: 100px;">
+            <div class="print-titles">
+                <h1 id="printTitle">Rennen Ergebnisse</h1>
+                <p id="printSubtitle"></p>
+            </div>
+        </div>
+        <table id="printTable">
+            <thead>
+                <tr>
+                    <th>Platz</th>
+                    <th>Startnr.</th>
+                    <th>Name</th>
+                    <th>Kategorie</th>
+                    <th>Startzeit</th>
+                    <th>Dauer</th>
+                    <th>Rückstand</th>
+                </tr>
+            </thead>
+            <tbody id="printBody"></tbody>
+        </table>
+    </div>
+
+    <!-- Liquid Glass SVG Filter -->
+    <svg style="display: none;">
+        <defs>
+            <filter id="mini-liquid-lens">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
+                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
+                    result="liquid" />
+                <feComposite in="SourceGraphic" in2="liquid" operator="atop" />
+            </filter>
+        </defs>
+    </svg>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
