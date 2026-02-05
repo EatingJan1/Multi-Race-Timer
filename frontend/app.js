@@ -1,5 +1,5 @@
-const API_BASE = `http://${window.location.hostname}:5001/race`;
-const AUTH_BASE = `http://${window.location.hostname}:5001/auth`;
+const API_BASE = `http://${window.location.hostname}:5002/race`;
+const AUTH_BASE = `http://${window.location.hostname}:5002/auth`;
 
 let participants = [];
 let activeIndex = -1;
