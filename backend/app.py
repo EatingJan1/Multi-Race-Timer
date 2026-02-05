@@ -86,7 +86,7 @@ class AuthStatus(Resource):
     def get(self):
         """Check authentication status"""
         if session.get('logged_in'):
-            return {'logged_in': True, 'user': ADMIN_USER}
+            return {'logged_in': True, 'user': session['user']}
         return {'logged_in': False}, 200
 
 
