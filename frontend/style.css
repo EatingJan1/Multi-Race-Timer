@@ -800,82 +800,118 @@ input:checked+.switch-slider:before {
 @media (max-width: 768px) {
     body {
         padding: 1rem;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
     }
 
     h1 {
-        font-size: 2rem;
+        font-size: 1.75rem;
+        margin-top: 0.5rem;
     }
 
+    /* Force show desktop-only elements, but style them for mobile grid */
     .desktop-only {
-        display: none !important;
+        display: block !important;
     }
 
+    /* Mobile Header & Control Bar - Stacked & Scrollable */
     .control-bar {
         flex-direction: column;
         gap: 0.75rem;
         padding: 1rem;
-        overflow-x: visible;
-        align-items: stretch;
         border-radius: 16px;
+        margin-bottom: 1.5rem;
     }
 
     .control-group-left,
     .control-group-right {
-        flex-direction: row !important;
-        flex-wrap: wrap !important;
+        display: flex !important;
+        flex-direction: column !important;
         width: 100%;
-        gap: 0.5rem;
-        justify-content: stretch;
+        gap: 0.75rem;
+        align-items: stretch !important;
     }
 
-    .control-group-right {
-        margin-left: 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding-top: 0.75rem;
-        justify-content: center;
-    }
-
-    .session-select {
-        flex: 1 1 calc(50% - 0.5rem);
-        min-width: 0;
+    .session-select,
+    #tagFilter {
+        width: 100%;
         height: 48px;
-        /* Larger touch target for mobile */
+        /* Touch friendly */
+        font-size: 1rem;
     }
 
     .action-buttons {
-        width: 100%;
         display: grid !important;
         grid-template-columns: 1fr 1fr;
-        gap: 0.5rem;
+        gap: 0.75rem;
+        width: 100%;
     }
 
     .action-buttons .btn-icon {
         width: 100% !important;
         height: 48px;
-    }
-
-    .import-btn {
-        flex: 1;
-        height: 48px;
-    }
-
-    #settingsBtn {
-        height: 48px;
-        width: 48px !important;
+        justify-content: center;
     }
 
     .divider {
         display: none;
     }
 
+    /* Import & Settings Row */
+    .control-group-right {
+        flex-direction: row !important;
+        /* Keep buttons side-by-side */
+        justify-content: space-between;
+        margin-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 1rem;
+    }
+
+    .import-section {
+        flex-grow: 1;
+        margin-right: 0.75rem;
+    }
+
+    .import-btn {
+        width: 100%;
+        height: 48px;
+        justify-content: center;
+    }
+
+    #settingsBtn {
+        height: 48px;
+        width: 48px !important;
+        flex-shrink: 0;
+    }
+
+    /* Active Person Card - Sticky & Prominent */
     .active-person-card {
         top: 0.5rem;
+        margin: 0 -0.5rem 1.5rem -0.5rem;
+        /* Full width feel */
+        border-radius: 16px;
+        padding: 1rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
     }
 
     .timer-display {
-        font-size: 3rem;
+        font-size: 3.5rem;
+        line-height: 1;
+        margin: 0.5rem 0;
     }
 
+    .person-name {
+        font-size: 1.25rem;
+    }
+
+    .btn-start {
+        height: 60px;
+        font-size: 1.1rem;
+        letter-spacing: 0.5px;
+        font-weight: 800;
+    }
+
+    /* Card-Based List Layout for Mobile */
     #raceTable thead {
         display: none;
     }
@@ -890,111 +926,173 @@ input:checked+.switch-slider:before {
 
     #raceTable tr {
         margin-bottom: 1rem;
-        padding: 1rem;
         background: rgba(255, 255, 255, 0.03);
         border: 1px solid var(--card-border);
-        border-radius: 20px;
+        border-radius: 16px;
+        position: relative;
+        /* For absolute positioning of some elements if needed */
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: auto auto auto auto;
-        gap: 0;
+        /* Custom Grid Layout for Mobile Card */
+        /* Columns: [Left: Status/Action] [Middle: Info] [Right: Times/Rank] */
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+            "number name"
+            "status rank"
+            "times times"
+            "actions actions";
+        gap: 0.5rem;
+        padding: 1rem;
     }
 
     #raceTable td {
-        padding: 0.25rem 0;
-        background: transparent;
+        padding: 0;
+        background: transparent !important;
+        border: none !important;
     }
 
+    /* Map Data to Grid Areas */
     #raceTable td[data-label="Startnr."] {
-        grid-row: 1;
-        grid-column: 1;
-        font-weight: 800;
+        grid-area: number;
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: var(--primary);
     }
 
     #raceTable td[data-label="Name"] {
-        grid-row: 1;
-        grid-column: 2/span 2;
+        grid-area: name;
+        font-size: 1.1rem;
+        font-weight: 600;
         text-align: right;
-        color: var(--text-muted);
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
     }
 
+    /* Move tags to be under name in flex flow if needed, or inline */
+    .tag-badges {
+        justify-content: flex-end;
+    }
+
+    #raceTable td[data-label="Status"] {
+        grid-area: status;
+        padding-top: 0.25rem;
+    }
+
+    #raceTable td[data-label="Platz"] {
+        grid-area: rank;
+        text-align: right;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-main);
+    }
+
+    /* Combine Times into one block area */
     #raceTable td[data-label="Startzeit"],
+    #raceTable td[data-label="Endzeit"],
     #raceTable td[data-label="Dauer"],
-    #raceTable td[data-label="Endzeit"] {
-        grid-row: 2;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
-        font-size: 0.75rem;
-        text-align: center;
+    #raceTable td[data-label="Rückstand"] {
+        /* We can't merge cells in CSS grid easily without extra markup, 
+           so we let them flow or assign specific spots. 
+           Let's create a 'Times' row feel. */
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding-top: 0.5rem !important;
+        margin-top: 0.25rem;
     }
 
     #raceTable td[data-label="Startzeit"] {
+        grid-area: times;
+        grid-row: 3;
+        margin-bottom: 2.5rem;
+    }
+
+    /* Hack: Stack them visually by changing grid rows dynamically or just dump them in one column? 
+       Actually, let's simplify. 
+       Let's put Times in a 2-column sub-grid details view.
+    */
+
+    /* Re-think Grid for Times */
+    #raceTable td[data-label="Startzeit"] {
         grid-column: 1;
-        text-align: left;
+        grid-row: 3;
+        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding-top: 0.5rem !important;
+    }
+
+    #raceTable td[data-label="Endzeit"] {
+        grid-column: 1;
+        grid-row: 4;
     }
 
     #raceTable td[data-label="Dauer"] {
         grid-column: 2;
-    }
-
-    #raceTable td[data-label="Endzeit"] {
-        grid-column: 3;
-        text-align: right;
-    }
-
-    #raceTable td[data-label="Platz"] {
         grid-row: 3;
-        grid-column: 1/span 2;
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--primary);
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
+        text-align: right;
+        justify-content: flex-end;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding-top: 0.5rem !important;
     }
 
     #raceTable td[data-label="Rückstand"] {
-        grid-row: 3;
-        grid-column: 3;
-        font-size: 1.2rem;
-        font-weight: 700;
-        color: var(--accent-red);
-        text-align: right;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        margin-top: 0.5rem;
-        padding-top: 0.5rem;
-    }
-
-    #raceTable td[data-label="Aktionen"] {
+        grid-column: 2;
         grid-row: 4;
-        grid-column: 1/span 3;
-        display: flex;
-        justify-content: center;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        text-align: right;
+        justify-content: flex-end;
+    }
+
+    /* Actions Row */
+    #raceTable td[data-label="Aktionen"] {
+        grid-column: 1 / -1;
+        grid-row: 5;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding-top: 0.75rem !important;
         margin-top: 0.5rem;
-        padding-top: 0.5rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
     }
 
-    #raceTable td::before {
-        content: attr(data-label);
-        display: block;
-        font-size: 0.6rem;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        margin-bottom: 0.1rem;
+    /* Labels for data fields to make them understandable */
+    #raceTable td[data-label="Startzeit"]::before {
+        content: "Start:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
     }
 
-    #raceTable td[data-label="Platz"]::before,
-    #raceTable td[data-label="Rückstand"]::before,
+    #raceTable td[data-label="Endzeit"]::before {
+        content: "Ende:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
+    }
+
+    #raceTable td[data-label="Dauer"]::before {
+        content: "Dauer:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
+        font-weight: 400;
+        font-size: 0.8rem;
+    }
+
+    /* Hide unneeded labels */
     #raceTable td[data-label="Startnr."]::before,
     #raceTable td[data-label="Name"]::before,
+    #raceTable td[data-label="Platz"]::before,
+    #raceTable td[data-label="Status"]::before,
+    #raceTable td[data-label="Rückstand"]::before,
     #raceTable td[data-label="Aktionen"]::before {
         display: none;
     }
 
-    body.hide-mobile-tags .mobile-hideable-tags {
-        display: none !important;
+    /* Safe Area for bottom scrolling */
+    .table-container {
+        padding-bottom: 3rem;
     }
 }
 
