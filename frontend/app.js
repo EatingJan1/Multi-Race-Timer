@@ -39,7 +39,7 @@ const startAudio = new Audio('race-start-beeps-125125.mp3');
 const csvFileInput = document.getElementById('csvFile');
 const sessionSelect = document.getElementById('sessionSelect');
 const tagFilter = document.getElementById('tagFilter');
-const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+const exportBtn = document.getElementById('exportBtn');
 const deleteSessionBtn = document.getElementById('deleteSessionBtn');
 const raceBody = document.getElementById('raceBody');
 const activeSection = document.getElementById('activeSection');
@@ -513,7 +513,7 @@ function openExportMenu() {
     exportTagFilter.value = currentTag;
     exportModal.classList.add('active');
 }
-downloadCsvBtn.onclick = openExportMenu;
+exportBtn.onclick = openExportMenu;
 closeExport.onclick = () => exportModal.classList.remove('active');
 exportLogoInput.onchange = (e) => {
     const file = e.target.files[0];
