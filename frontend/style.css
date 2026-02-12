@@ -506,7 +506,7 @@ h1 {
 /* Buttons */
 .btn {
     padding: 0.8rem 1.5rem;
-    border-radius: 12px;
+    border-radius: 30px;
     font-weight: 600;
     cursor: progress;
     transition: all 0.2s;
