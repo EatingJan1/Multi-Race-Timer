@@ -832,7 +832,8 @@ function renderColumnConfig() {
 
     columnConfig.forEach((col, index) => {
         const item = document.createElement('div');
-        item.className = `column-config-item ${col.required ? 'required' : ''}`;
+        // Klasse 'disabled' hinzufügen, wenn visible false ist
+        item.className = `column-config-item ${col.required ? 'required' : ''} ${!col.visible ? 'disabled' : ''}`;
         item.draggable = true;
         item.dataset.index = index;
 
@@ -841,71 +842,55 @@ function renderColumnConfig() {
                 <span></span><span></span>
                 <span></span><span></span>
             </div>
-            <span class="col-label">${col.label}</span>
-            <input type="checkbox" class="col-toggle" ${col.visible ? 'checked' : ''} 
-                   ${col.required ? 'disabled' : ''} 
-                   onclick="event.stopPropagation(); toggleColumn('${col.id}')">
-        `;
+            <span class="col-label">${col.label} ${col.required ? '(Fix)' : ''}</span>
+            
+            <div class="visibility-indicator"></div>
+        `;//<div class="status-indicator"></div>
 
-        // Drag Start: Stylt das gezogene Element
+        // DOPPELKLICK zum Aktivieren/Deaktivieren
+        item.addEventListener('dblclick', () => {
+            if (!col.required) {
+                toggleColumn(col.id);
+            }
+        });
+
+        // Drag & Drop Events (behalten wie zuvor)
         item.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', index);
             item.classList.add('dragging');
         });
 
-        item.addEventListener('dragend', () => {
-            item.classList.remove('dragging');
-            // Entferne alle Überreste von dragover Styles in der Liste
-            document.querySelectorAll('.column-config-item').forEach(i => i.classList.remove('drag-over'));
-        });
+        item.addEventListener('dragend', () => item.classList.remove('dragging'));
 
-        // Drag Over: Visuelles Feedback, wo es landen wird
         item.addEventListener('dragover', (e) => {
             e.preventDefault();
             const draggingItem = document.querySelector('.dragging');
             if (draggingItem === item) return;
-
             const bounding = item.getBoundingClientRect();
             const offset = e.clientY - bounding.top;
-            
-            // Entferne alte Zustände, um Flackern zu vermeiden
             item.classList.remove('drag-over-top', 'drag-over-bottom');
-
-            if (offset < bounding.height / 2) {
-                item.classList.add('drag-over-top');
-            } else {
-                item.classList.add('drag-over-bottom');
-            }
+            if (offset < bounding.height / 2) item.classList.add('drag-over-top');
+            else item.classList.add('drag-over-bottom');
         });
 
         item.addEventListener('dragleave', () => {
             item.classList.remove('drag-over-top', 'drag-over-bottom');
         });
 
-        // Drop: Hier passiert der Snap
         item.addEventListener('drop', (e) => {
-            item.classList.remove('drag-over-top', 'drag-over-bottom');
             e.preventDefault();
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
             const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             const toIndex = index;
-            
-            if (fromIndex === toIndex) return; // Nichts tun, wenn auf sich selbst gedroppt
-
-            // Daten im Array verschieben
-            const movedItem = columnConfig.splice(fromIndex, 1)[0];
-            columnConfig.splice(toIndex, 0, movedItem);
-            
-            // UI aktualisieren
-            renderColumnConfig();
-            saveAndRefreshConfig(); // Speichert & updated die Haupttabelle
-
-            // SNAP-EFFEKT: Wir müssen kurz warten, bis das DOM neu gezeichnet wurde
-            setTimeout(() => {
-                const allItems = document.querySelectorAll('.column-config-item');
-                if (allItems[toIndex]) {
-                    allItems[toIndex].classList.add('just-dropped');
-                }
-            }, 10); // 10ms reichen aus, damit das Element existiert
+            if (fromIndex !== toIndex) {
+                const movedItem = columnConfig.splice(fromIndex, 1)[0];
+                columnConfig.splice(toIndex, 0, movedItem);
+                saveAndRefreshConfig();
+                setTimeout(() => {
+                    const newItems = document.querySelectorAll('.column-config-item');
+                    if (newItems[toIndex]) newItems[toIndex].classList.add('just-dropped');
+                }, 10);
+            }
         });
 
         container.appendChild(item);
@@ -915,6 +900,7 @@ function renderColumnConfig() {
 
 
 window.toggleColumn = (id) => {
+    getElementById(id)
     const col = columnConfig.find(c => c.id === id);
     if (col && !col.required) {
         col.visible = !col.visible;
@@ -1026,6 +1012,7 @@ deleteSessionBtn.onclick = async () => {
     await apiCall(`/${currentRace}/delete`, 'DELETE');
     currentRace = ''; localStorage.removeItem('currentRace');
     await fetchSessions(); await fetchParticipants(); updateSettingsUI();
+    settingsModal.classList.remove('active');
 };
 
 settingsBtn.onclick = () => settingsModal.classList.add('active');

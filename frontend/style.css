@@ -145,12 +145,48 @@ h1 {
     background: rgba(255, 255, 255, 0.2);
 }
 
+
 .column-config-item {
-    /* Wichtig: Transition für alle Bewegungen hinzufügen */
-    transition: margin 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
-                transform 0.2s ease, 
-                border 0.2s ease;
-    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    user-select: none; /* Verhindert Textmarkierung beim Doppelklick */
+}
+
+
+.column-config-item.disabled {
+    opacity: 0.5;
+    background: rgba(255, 255, 255, 0.02);
+    border-color: transparent;
+    filter: grayscale(1);
+}
+
+.column-config-item.disabled .col-label {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.status-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    box-shadow: 0 0 10px var(--accent-green);
+    transition: all 0.3s ease;
+}
+
+.visibility-indicator {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-left: auto; /* Schiebt ihn ganz nach rechts */
+    background: var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.column-config-item.disabled .status-indicator {
+    background: var(--text-muted);
+    box-shadow: none;
 }
 
 .column-config-item.drag-over-top {
@@ -321,6 +357,29 @@ h1 {
     background: rgba(99, 102, 241, 0.2) !important;
     border-color: var(--primary) !important;
     z-index: 10;
+}
+
+/* Zustand: Deaktiviert */
+.column-config-item.disabled-item {
+    opacity: 0.5;
+    background: rgba(255, 255, 255, 0.02);
+    border-color: transparent;
+}
+
+.column-config-item.disabled-item .visibility-indicator {
+    background: #475569; /* Muted slate */
+    box-shadow: none;
+}
+
+.column-config-item.disabled-item .col-label {
+    color: var(--text-muted);
+    text-decoration: line-through;
+}
+
+/* Hover-Effekt zur Verdeutlichung der Interaktion */
+.column-config-item:hover:not(.dragging) {
+    background: rgba(255, 255, 255, 0.08);
+    cursor: grab;
 }
 
 .column-config-item .checkmark {
