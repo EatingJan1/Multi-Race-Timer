@@ -114,6 +114,7 @@ h1 {
 
 /* Column Config Styling */
 .column-config-list {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 0.65rem;
@@ -123,6 +124,7 @@ h1 {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
 }
 
 /* Custom scrollbar for the config list */
@@ -144,20 +146,32 @@ h1 {
 }
 
 .column-config-item {
-    display: flex;
-    align-items: center;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 12px;
-    padding: 0.75rem 1rem;
-    gap: 1.25rem;
-    transition: transform 0.2s cubic-bezier(0.2, 0, 0.5, 1), background 0.2s, border-color 0.2s, opacity 0.2s;
-    cursor: grab;
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
+    /* Wichtig: Transition für alle Bewegungen hinzufügen */
+    transition: margin 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+                transform 0.2s ease, 
+                border 0.2s ease;
     position: relative;
-    touch-action: pan-y;
+}
+
+.column-config-item.drag-over-top {
+    border-top: 2px solid var(--primary) !important;
+    margin-top: 20px; /* Schiebt das Element nach unten, macht Platz oben */
+}
+
+.column-config-item.drag-over-bottom {
+    border-bottom: 2px solid var(--primary) !important;
+    margin-bottom: 20px; /* Schiebt das nächste Element weg */
+}
+
+@keyframes snapIn {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .column-config-item:active {
@@ -166,9 +180,14 @@ h1 {
 
 .column-config-item.dragging {
     opacity: 0.4;
-    background: var(--primary);
-    border-color: var(--primary);
     transform: scale(0.98);
+    background: var(--primary);
+}
+
+.column-config-item.drag-over {
+    border-top: 2px solid var(--primary);
+    margin-top: 10px;
+    transition: all 0.2s ease;
 }
 
 .column-config-item:hover:not(.dragging) {
@@ -176,6 +195,8 @@ h1 {
     border-color: rgba(255, 255, 255, 0.15);
     transform: translateX(4px);
 }
+
+
 
 .drag-handle {
     display: flex;
@@ -214,6 +235,8 @@ h1 {
     transition: none !important;
 }
 
+
+
 /* Background for swipe actions */
 .column-config-item-wrapper {
     position: relative;
@@ -226,6 +249,48 @@ h1 {
 .column-config-item-wrapper.showing {
     background: rgba(0, 255, 0, 0.2);
     /* Show color */
+}
+
+/* Toggle-Switch zum Deaktivieren/Aktivieren */
+.col-toggle {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 34px;
+    height: 18px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0; /* Verhindert das Quetschen auf kleinen Bildschirmen */
+}
+
+.col-toggle:checked {
+    background: var(--accent-green);
+    border-color: var(--accent-green);
+}
+
+.col-toggle::before {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    top: 1px;
+    left: 1px;
+    background: white;
+    transition: 0.3s;
+}
+
+.col-toggle:checked::before {
+    transform: translateX(16px);
+}
+
+.col-toggle:disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
+    filter: grayscale(1);
 }
 
 .swipe-hint {
@@ -249,6 +314,13 @@ h1 {
 
 .column-config-item.required .col-label {
     color: var(--text-muted);
+}
+
+.column-config-item.just-dropped {
+    animation: snapIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Elastische Kurve */
+    background: rgba(99, 102, 241, 0.2) !important;
+    border-color: var(--primary) !important;
+    z-index: 10;
 }
 
 .column-config-item .checkmark {

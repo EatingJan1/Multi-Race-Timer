@@ -826,167 +826,113 @@ async function apiCall(endpoint, method, body = null) {
 }
 
 function renderColumnConfig() {
-    if (!columnConfigList) return;
-    columnConfigList.innerHTML = '';
+    const container = document.getElementById('columnConfigList');
+    if (!container) return;
+    container.innerHTML = '';
+
     columnConfig.forEach((col, index) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'column-config-item-wrapper' + (!col.visible ? ' showing' : '');
         const item = document.createElement('div');
-        item.className = 'column-config-item' + (col.required ? ' required' : '');
+        item.className = `column-config-item ${col.required ? 'required' : ''}`;
         item.draggable = true;
         item.dataset.index = index;
-        if (window.currentlyDraggingId === col.id) {
-            item.classList.add('dragging');
-            item.style.opacity = '0.4';
-        }
-
-        const visibilityToggle = col.required
-            ? '<label class="check-container" style="margin: 0; padding:0;"><input type="checkbox" checked disabled><span class="checkmark" style="background-color: var(--primary); opacity: 0.5;"></span></label>'
-            : `<label class="check-container" style="margin: 0; padding:0;"><input type="checkbox" ${col.visible ? 'checked' : ''} onchange="toggleColumn('${col.id}')"><span class="checkmark"></span></label>`;
 
         item.innerHTML = `
-            <div class="drag-icon"><div></div><div></div><div></div><div></div><div></div><div></div></div>
-            ${visibilityToggle}
+            <div class="drag-icon">
+                <span></span><span></span>
+                <span></span><span></span>
+            </div>
             <span class="col-label">${col.label}</span>
-            <span class="swipe-hint">${col.visible ? 'Ausblenden' : 'Einblenden'}</span>
+            <input type="checkbox" class="col-toggle" ${col.visible ? 'checked' : ''} 
+                   ${col.required ? 'disabled' : ''} 
+                   onclick="event.stopPropagation(); toggleColumn('${col.id}')">
         `;
 
-        wrapper.appendChild(item);
-
-        item.addEventListener('mousedown', (e) => {
-            // Only allow dragging if clicking the handle
-            item.draggable = !!e.target.closest('.drag-icon');
-        });
-
+        // Drag Start: Stylt das gezogene Element
         item.addEventListener('dragstart', (e) => {
-            window.currentlyDraggingId = col.id;
-            window.dragFromIndex = index;
-            item.classList.add('dragging');
             e.dataTransfer.setData('text/plain', index);
-            e.dataTransfer.effectAllowed = 'move';
-            setTimeout(() => item.style.opacity = '0.4', 0);
-        });
-
-        item.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            const fromIndex = window.dragFromIndex;
-            const toIndex = index;
-
-            if (fromIndex !== undefined && fromIndex !== toIndex) {
-                // Determine if we should swap based on vertical cursor position
-                const rect = item.getBoundingClientRect();
-                const midpoint = rect.top + rect.height / 2;
-
-                if ((fromIndex < toIndex && e.clientY > midpoint) ||
-                    (fromIndex > toIndex && e.clientY < midpoint)) {
-
-                    const movedItem = columnConfig.splice(fromIndex, 1)[0];
-                    columnConfig.splice(toIndex, 0, movedItem);
-                    window.dragFromIndex = toIndex;
-
-                    // Instant re-render for fluid movement
-                    renderColumnConfig();
-                    renderTable();
-                    localStorage.setItem('columnConfig', JSON.stringify(columnConfig));
-                }
-            }
+            item.classList.add('dragging');
         });
 
         item.addEventListener('dragend', () => {
-            window.currentlyDraggingId = null;
-            window.dragFromIndex = undefined;
+            item.classList.remove('dragging');
+            // Entferne alle Überreste von dragover Styles in der Liste
+            document.querySelectorAll('.column-config-item').forEach(i => i.classList.remove('drag-over'));
+        });
+
+        // Drag Over: Visuelles Feedback, wo es landen wird
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            const draggingItem = document.querySelector('.dragging');
+            if (draggingItem === item) return;
+
+            const bounding = item.getBoundingClientRect();
+            const offset = e.clientY - bounding.top;
+            
+            // Entferne alte Zustände, um Flackern zu vermeiden
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+
+            if (offset < bounding.height / 2) {
+                item.classList.add('drag-over-top');
+            } else {
+                item.classList.add('drag-over-bottom');
+            }
+        });
+
+        item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+        });
+
+        // Drop: Hier passiert der Snap
+        item.addEventListener('drop', (e) => {
+            item.classList.remove('drag-over-top', 'drag-over-bottom');
+            e.preventDefault();
+            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const toIndex = index;
+            
+            if (fromIndex === toIndex) return; // Nichts tun, wenn auf sich selbst gedroppt
+
+            // Daten im Array verschieben
+            const movedItem = columnConfig.splice(fromIndex, 1)[0];
+            columnConfig.splice(toIndex, 0, movedItem);
+            
+            // UI aktualisieren
             renderColumnConfig();
-        });
+            saveAndRefreshConfig(); // Speichert & updated die Haupttabelle
 
-        // TOUCH SUPPORT (SWIPE & DRAG)
-        let touchStart = { x: 0, y: 0 };
-        let isHorizontalSwipe = false;
-
-        item.addEventListener('touchstart', (e) => {
-            touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-            isHorizontalSwipe = false;
-
-            const handle = e.target.closest('.drag-icon');
-            if (handle) {
-                window.currentlyDraggingId = col.id;
-                window.dragFromIndex = index;
-                item.classList.add('dragging');
-                item.style.opacity = '0.4';
-            }
-        }, { passive: true });
-
-        item.addEventListener('touchmove', (e) => {
-            const touch = e.touches[0];
-            const deltaX = touch.clientX - touchStart.x;
-            const deltaY = touch.clientY - touchStart.y;
-
-            if (!window.currentlyDraggingId && Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-                isHorizontalSwipe = true;
-            }
-
-            if (isHorizontalSwipe && !col.required) {
-                const move = Math.min(0, deltaX);
-                item.style.transform = `translateX(${move}px)`;
-                item.classList.add('swiping');
-            } else if (window.currentlyDraggingId) {
-                const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
-                const targetItem = elementUnderTouch ? elementUnderTouch.closest('.column-config-item') : null;
-                if (targetItem && targetItem !== item) {
-                    const toIndex = parseInt(targetItem.dataset.index);
-                    const fromIndex = window.dragFromIndex;
-                    if (fromIndex !== toIndex) {
-                        const rect = targetItem.getBoundingClientRect();
-                        const midpoint = rect.top + rect.height / 2;
-                        if ((fromIndex < toIndex && touch.clientY > midpoint) || (fromIndex > toIndex && touch.clientY < midpoint)) {
-                            const movedItem = columnConfig.splice(fromIndex, 1)[0];
-                            columnConfig.splice(toIndex, 0, movedItem);
-                            window.dragFromIndex = toIndex;
-                            renderColumnConfig();
-                            renderTable();
-                            localStorage.setItem('columnConfig', JSON.stringify(columnConfig));
-                        }
-                    }
+            // SNAP-EFFEKT: Wir müssen kurz warten, bis das DOM neu gezeichnet wurde
+            setTimeout(() => {
+                const allItems = document.querySelectorAll('.column-config-item');
+                if (allItems[toIndex]) {
+                    allItems[toIndex].classList.add('just-dropped');
                 }
-            }
+            }, 10); // 10ms reichen aus, damit das Element existiert
         });
 
-        item.addEventListener('touchend', (e) => {
-            if (isHorizontalSwipe && !col.required) {
-                const deltaX = e.changedTouches[0].clientX - touchStart.x;
-                if (deltaX < -80) {
-                    toggleColumn(col.id);
-                }
-            }
-
-            window.currentlyDraggingId = null;
-            window.dragFromIndex = undefined;
-            item.style.transform = '';
-            item.classList.remove('swiping');
-            setTimeout(() => renderColumnConfig(), 300);
-        });
-
-        columnConfigList.appendChild(wrapper);
+        container.appendChild(item);
     });
 }
+
+
 
 window.toggleColumn = (id) => {
     const col = columnConfig.find(c => c.id === id);
     if (col && !col.required) {
         col.visible = !col.visible;
-        saveAndRefill();
+        saveAndRefreshConfig();
     }
 };
 
-function saveAndRefill() {
+function saveAndRefreshConfig() {
     localStorage.setItem('columnConfig', JSON.stringify(columnConfig));
     renderColumnConfig();
-    renderTable();
+    renderTable(); // Aktualisiert die Haupttabelle sofort
 }
+
 
 if (resetColumnsBtn) resetColumnsBtn.onclick = () => {
     if (confirm('Spalten-Einstellungen auf Standard zurücksetzen?')) {
         columnConfig = DEFAULT_COLUMNS.map(c => ({ ...c }));
-        saveAndRefill();
+        saveAndRefreshConfig();
     }
 };
 
