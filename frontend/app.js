@@ -652,14 +652,50 @@ function prepareAndPrint() {
         { id: 'col-start', label: 'Startzeit', key: 'start' },
         { id: 'col-end', label: 'Endzeit', key: 'end' },
         { id: 'col-duration', label: 'Dauer', key: 'duration' },
-        { id: 'col-gap', label: 'Rückstand', key: 'gap' }
+        { id: 'col-gap', label: 'Abweichung', key: 'gap' } // Label dynamisch angepasst
     ].filter(c => document.getElementById(c.id).checked);
 
     const raceTitle = currentRace ? currentRace.replace(/_/g, ' ') : 'Wettbewerb';
-    const tagTitle = filter ? `Kategorie: ${filter}` : 'Gesamtwertung';
+    let tagTitle = filter ? `Kategorie: ${filter}` : 'Gesamtwertung';
+    
+    let list = participants.filter(p => !filter || (p.tags && p.tags.includes(filter)));
+    list = list.filter(p => p.duration);
+
+    // 1. Durchschnitt berechnen
+    const averageDuration = list.length > 0 
+        ? list.reduce((sum, p) => sum + p.duration, 0) / list.length 
+        : 0;
+
+    if (sortBy === 'mean') {
+        tagTitle += ` (Ziel-Ø: ${averageDuration.toFixed(3)}s)`;
+        
+        // Sortieren nach absoluter Differenz zum Durchschnitt
+        list.sort((a, b) => Math.abs(a.duration - averageDuration) - Math.abs(b.duration - averageDuration));
+        
+        // Plätze neu vergeben: Wer am nächsten dran ist, bekommt Platz 1
+        list.forEach((p, i) => {
+            const currentDiff = Math.abs(p.duration - averageDuration);
+            const prevDiff = i > 0 ? Math.abs(list[i - 1].duration - averageDuration) : null;
+            
+            p.rank = (i > 0 && currentDiff === prevDiff) ? list[i - 1].rank : i + 1;
+        });
+    } else {
+        // Klassische Sortierung nach Zeit für das Standard-Ranking
+        list.sort((a, b) => a.duration - b.duration);
+        list.forEach((p, i) => { 
+            p.rank = (i > 0 && p.duration === list[i - 1].duration) ? list[i - 1].rank : i + 1; 
+        });
+
+        // Falls danach noch nach Name/Startnummer sortiert werden soll:
+        if (sortBy === 'number') list.sort((a, b) => a.start_number - b.start_number);
+        else if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
+        else if (sortBy === 'startTime') list.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+    }
+
     document.getElementById('printTitle').textContent = raceTitle;
     document.getElementById('printSubtitle').textContent = tagTitle;
 
+    // Logo Handling
     if (uploadedLogoData) {
         printLogo.src = uploadedLogoData;
         printLogo.style.setProperty('display', 'block', 'important');
@@ -668,20 +704,11 @@ function prepareAndPrint() {
         printLogo.removeAttribute('src');
     }
 
-    let list = participants.filter(p => !filter || (p.tags && p.tags.includes(filter)));
-    list = list.filter(p => p.duration);
-    list.sort((a, b) => a.duration - b.duration);
-    list.forEach((p, i) => { p.rank = (i > 0 && p.duration === list[i - 1].duration) ? list[i - 1].rank : i + 1; });
-
-    const winnerDuration = list.length > 0 ? list[0].duration : null;
-
-    if (sortBy === 'number') list.sort((a, b) => a.start_number - b.start_number);
-    else if (sortBy === 'name') list.sort((a, b) => a.name.localeCompare(b.name));
-    else if (sortBy === 'startTime') list.sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
-
     const printTable = document.getElementById('printTable');
     printTable.innerHTML = `<thead><tr>${cols.map(c => `<th>${c.label}</th>`).join('')}</tr></thead><tbody id="printBody"></tbody>`;
     const pBody = document.getElementById('printBody');
+
+    const winnerDuration = (sortBy !== 'mean' && list.length > 0) ? list[0].duration : null;
 
     list.forEach((p) => {
         const row = document.createElement('tr');
@@ -693,11 +720,19 @@ function prepareAndPrint() {
             if (c.key === 'start') return `<td>${formatTime(p.start_time)}</td>`;
             if (c.key === 'end') return `<td>${formatTime(p.end_time)}</td>`;
             if (c.key === 'duration') return `<td>${p.duration.toFixed(3)}s</td>`;
-            if (c.key === 'gap') return `<td>${p.rank === 1 ? 'Bestzeit' : `+${(p.duration - winnerDuration).toFixed(3)}s`}</td>`;
+            if (c.key === 'gap') {
+                if (sortBy === 'mean') {
+                    const diff = p.duration - averageDuration;
+                    const prefix = diff > 0 ? '+' : '';
+                    return `<td>${prefix}${diff.toFixed(3)}s</td>`;
+                }
+                return `<td>${p.rank === 1 ? 'Bestzeit' : `+${(p.duration - winnerDuration).toFixed(3)}s`}</td>`;
+            }
             return '<td></td>';
         }).join('');
         pBody.appendChild(row);
     });
+
     exportModal.classList.remove('active');
     setTimeout(() => { window.print(); }, 250);
 }
