@@ -117,8 +117,7 @@ h1 {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
-    max-height: 400px;
+    gap: 0.35rem;
     overflow-y: auto;
     padding: 0.5rem;
     background: rgba(0, 0, 0, 0.2);
@@ -147,8 +146,16 @@ h1 {
 
 
 .column-config-item {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: grab;
     user-select: none; /* Verhindert Textmarkierung beim Doppelklick */
+    transition: all 0.2s ease;
 }
 
 
@@ -174,14 +181,13 @@ h1 {
 }
 
 .visibility-indicator {
-    width: 10px;
-    height: 10px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    margin-left: auto; /* Schiebt ihn ganz nach rechts */
+    margin-left: auto;
     background: var(--accent-green);
-    box-shadow: 0 0 8px var(--accent-green);
+    box-shadow: 0 0 10px var(--accent-green);
     transition: all 0.3s ease;
-    flex-shrink: 0;
 }
 
 .column-config-item.disabled .status-indicator {
@@ -190,13 +196,13 @@ h1 {
 }
 
 .column-config-item.drag-over-top {
-    border-top: 2px solid var(--primary) !important;
-    margin-top: 20px; /* Schiebt das Element nach unten, macht Platz oben */
+    border-top: 2px solid var(--primary);
+    transform: translateY(4px);
 }
 
 .column-config-item.drag-over-bottom {
-    border-bottom: 2px solid var(--primary) !important;
-    margin-bottom: 20px; /* Schiebt das nächste Element weg */
+    border-bottom: 2px solid var(--primary);
+    transform: translateY(-4px);
 }
 
 @keyframes snapIn {
@@ -361,18 +367,17 @@ h1 {
 
 /* Zustand: Deaktiviert */
 .column-config-item.disabled-item {
-    opacity: 0.5;
-    background: rgba(255, 255, 255, 0.02);
-    border-color: transparent;
+    opacity: 0.4;
+    filter: grayscale(0.8);
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .column-config-item.disabled-item .visibility-indicator {
-    background: #475569; /* Muted slate */
+    background: #64748b;
     box-shadow: none;
 }
 
 .column-config-item.disabled-item .col-label {
-    color: var(--text-muted);
     text-decoration: line-through;
 }
 

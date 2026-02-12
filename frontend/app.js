@@ -832,64 +832,67 @@ function renderColumnConfig() {
 
     columnConfig.forEach((col, index) => {
         const item = document.createElement('div');
-        // Klasse 'disabled' hinzufügen, wenn visible false ist
-        item.className = `column-config-item ${col.required ? 'required' : ''} ${!col.visible ? 'disabled' : ''}`;
+        // Klasse 'disabled-item' nur setzen, wenn die Spalte nicht sichtbar ist
+        item.className = `column-config-item ${col.required ? 'required' : ''} ${!col.visible ? 'disabled-item' : ''}`;
         item.draggable = true;
         item.dataset.index = index;
 
+        // Das Schloss wurde entfernt und der Indikator erscheint nur bei !col.required
         item.innerHTML = `
             <div class="drag-icon">
                 <span></span><span></span>
                 <span></span><span></span>
             </div>
-            <span class="col-label">${col.label} ${col.required ? '(Fix)' : ''}</span>
-            
-            <div class="visibility-indicator"></div>
-        `;//<div class="status-indicator"></div>
+            <span class="col-label">${col.label}</span>
+            ${!col.required ? '<div class="visibility-indicator"></div>' : ''}
+        `;
 
         // DOPPELKLICK zum Aktivieren/Deaktivieren
-        item.addEventListener('dblclick', () => {
+        item.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             if (!col.required) {
                 toggleColumn(col.id);
             }
         });
 
-        // Drag & Drop Events (behalten wie zuvor)
+        // Drag & Drop Events
         item.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', index);
             item.classList.add('dragging');
         });
 
-        item.addEventListener('dragend', () => item.classList.remove('dragging'));
+        item.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            document.querySelectorAll('.column-config-item').forEach(el => 
+                el.classList.remove('drag-over-top', 'drag-over-bottom')
+            );
+        });
 
         item.addEventListener('dragover', (e) => {
             e.preventDefault();
             const draggingItem = document.querySelector('.dragging');
             if (draggingItem === item) return;
+
             const bounding = item.getBoundingClientRect();
             const offset = e.clientY - bounding.top;
+            
             item.classList.remove('drag-over-top', 'drag-over-bottom');
-            if (offset < bounding.height / 2) item.classList.add('drag-over-top');
-            else item.classList.add('drag-over-bottom');
-        });
-
-        item.addEventListener('dragleave', () => {
-            item.classList.remove('drag-over-top', 'drag-over-bottom');
+            if (offset < bounding.height / 2) {
+                item.classList.add('drag-over-top');
+            } else {
+                item.classList.add('drag-over-bottom');
+            }
         });
 
         item.addEventListener('drop', (e) => {
             e.preventDefault();
-            item.classList.remove('drag-over-top', 'drag-over-bottom');
             const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             const toIndex = index;
             if (fromIndex !== toIndex) {
                 const movedItem = columnConfig.splice(fromIndex, 1)[0];
                 columnConfig.splice(toIndex, 0, movedItem);
                 saveAndRefreshConfig();
-                setTimeout(() => {
-                    const newItems = document.querySelectorAll('.column-config-item');
-                    if (newItems[toIndex]) newItems[toIndex].classList.add('just-dropped');
-                }, 10);
             }
         });
 
@@ -900,7 +903,6 @@ function renderColumnConfig() {
 
 
 window.toggleColumn = (id) => {
-    getElementById(id)
     const col = columnConfig.find(c => c.id === id);
     if (col && !col.required) {
         col.visible = !col.visible;
