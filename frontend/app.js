@@ -511,8 +511,52 @@ window.deleteParticipant = async (index) => {
 function openExportMenu() {
     updateTagFilter();
     exportTagFilter.value = currentTag;
+
+    // Checkboxen und deren Daten-Keys definieren
+    const checkMapping = [
+        { id: 'col-tags', key: 'tags', type: 'array' },
+        { id: 'col-start', key: 'start_time', type: 'value' },
+        { id: 'col-end', key: 'end_time', type: 'value' },
+        { id: 'col-duration', key: 'duration', type: 'value' },
+        { id: 'col-gap', key: 'duration', type: 'value' } // Gap basiert auch auf Duration
+    ];
+
+    checkMapping.forEach(mapping => {
+        const checkbox = document.getElementById(mapping.id);
+        const label = checkbox.closest('.check-container');
+        
+        // Prüfen, ob IRGENDJEMAND Daten für dieses Feld hat
+        const hasData = participants.some(p => {
+            if (mapping.type === 'array') {
+                return p[mapping.key] && p[mapping.key].length > 0;
+            }
+            return p[mapping.key] !== null && p[mapping.key] !== undefined && p[mapping.key] !== '';
+        });
+
+        if (!hasData) {
+            // Wenn keine Daten da sind: uncheck, disable und optisches Feedback
+            checkbox.checked = false;
+            checkbox.disabled = true;
+            if (label) {
+                label.style.opacity = '0.4';
+                label.style.cursor = 'not-allowed';
+                label.title = "Keine Daten in dieser Spalte vorhanden";
+            }
+        } else {
+            // Wenn Daten da sind: wieder aktivierbar machen (Standardmäßig an)
+            checkbox.disabled = false;
+            checkbox.checked = true; // Optional: true, damit sie bei neuen Daten wieder aktiv ist
+            if (label) {
+                label.style.opacity = '1';
+                label.style.cursor = 'pointer';
+                label.title = "";
+            }
+        }
+    });
+
     exportModal.classList.add('active');
 }
+
 exportBtn.onclick = openExportMenu;
 closeExport.onclick = () => exportModal.classList.remove('active');
 exportLogoInput.onchange = (e) => {
