@@ -667,7 +667,7 @@ function prepareAndPrint() {
         : 0;
 
     if (sortBy === 'mean') {
-        tagTitle += ` (Ziel-Ø: ${averageDuration.toFixed(3)}s)`;
+        tagTitle += ` (Ø: ${averageDuration.toFixed(3)}s)`;
         
         // Sortieren nach absoluter Differenz zum Durchschnitt
         list.sort((a, b) => Math.abs(a.duration - averageDuration) - Math.abs(b.duration - averageDuration));
