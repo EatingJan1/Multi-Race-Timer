@@ -3,12 +3,14 @@
     --card-bg: #1e1b4b;
     /* Deep Indigo for the premium glass feel */
     --primary: #6366f1;
-    /* Indigo */
+    --accent-blue: #3b82f6;
     --accent-green: #22c55e;
     --accent-red: #ef4444;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
     --card-border: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
 }
 
 html {
@@ -154,7 +156,8 @@ h1 {
     border-radius: 8px;
     margin-bottom: 8px;
     cursor: grab;
-    user-select: none; /* Verhindert Textmarkierung beim Doppelklick */
+    user-select: none;
+    /* Verhindert Textmarkierung beim Doppelklick */
     transition: all 0.2s ease;
 }
 
@@ -210,6 +213,7 @@ h1 {
         transform: scale(0.8);
         opacity: 0;
     }
+
     100% {
         transform: scale(1);
         opacity: 1;
@@ -305,7 +309,8 @@ h1 {
     cursor: pointer;
     transition: all 0.3s;
     border: 1px solid rgba(255, 255, 255, 0.1);
-    flex-shrink: 0; /* Verhindert das Quetschen auf kleinen Bildschirmen */
+    flex-shrink: 0;
+    /* Verhindert das Quetschen auf kleinen Bildschirmen */
 }
 
 .col-toggle:checked {
@@ -359,7 +364,8 @@ h1 {
 }
 
 .column-config-item.just-dropped {
-    animation: snapIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); /* Elastische Kurve */
+    animation: snapIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Elastische Kurve */
     background: rgba(99, 102, 241, 0.2) !important;
     border-color: var(--primary) !important;
     z-index: 10;
@@ -737,6 +743,9 @@ tr.active-row td {
     position: relative;
     border-radius: 28px;
 }
+
+
+
 
 .settings-section-title {
     display: flex;
@@ -1407,4 +1416,338 @@ input:checked+.switch-slider:before {
         font-weight: 800 !important;
         text-align: right !important;
     }
+
+    .settings-section {
+        display: none;
+    }
+}
+
+/* Landing Portal Styles */
+.landing-container {
+    width: 100%;
+    min-height: 100vh;
+    background: radial-gradient(circle at top right, #1e293b, #0f172a);
+    color: var(--text-main);
+    padding-bottom: 5rem;
+}
+
+.landing-header {
+    padding: 2rem;
+    text-align: center;
+}
+
+.glass-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+    border: 1px solid var(--glass-border);
+    margin-bottom: 3rem;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.logo-small {
+    height: 40px;
+}
+
+.hero-section {
+    padding: 6rem 1rem;
+    text-align: center;
+}
+
+.hero-title {
+    font-size: clamp(2.5rem, 8vw, 5rem);
+    font-weight: 900;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+}
+
+.accent-text {
+    background: linear-gradient(135deg, #818cf8, #6366f1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.hero-subtitle {
+    font-size: 1.25rem;
+    color: var(--text-muted);
+    max-width: 600px;
+    margin: 0 auto;
+    font-weight: 500;
+}
+
+.landing-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 2rem;
+}
+
+.race-grid-section {
+    margin-bottom: 5rem;
+}
+
+.race-grid-section h2 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.race-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 2rem;
+}
+
+.race-card {
+    background: rgba(30, 41, 59, 0.4);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    border-radius: 32px;
+    padding: 2rem;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 240px;
+    cursor: pointer;
+}
+
+.race-card:hover {
+    transform: translateY(-12px) scale(1.02);
+    border-color: var(--primary);
+    background: rgba(30, 41, 59, 0.6);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 0 0 20px rgba(99, 102, 241, 0.2);
+}
+
+.race-card-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    margin-bottom: 0.75rem;
+    color: var(--text-main);
+}
+
+.race-card-info {
+    font-size: 1rem;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.badge {
+    padding: 0.4rem 1rem;
+    border-radius: 100px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.badge-live {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.badge-future {
+    background: rgba(99, 102, 241, 0.15);
+    color: #818cf8;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.badge-closed {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Registration View Specifics */
+.registration-container {
+    padding: 3rem 2rem;
+    max-width: 1000px;
+    margin: 0 auto;
+    animation: fadeIn 0.6s ease-out;
+}
+
+.reg-header {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+#regRaceTitle {
+    font-size: 2.5rem;
+    font-weight: 800;
+}
+
+.pdf-viewer-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 3rem;
+    border-radius: 24px;
+    overflow: hidden;
+    background: white;
+    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+}
+
+#regPdfCanvas {
+    width: 100%;
+    display: block;
+}
+
+.pdf-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.pdf-input-wrapper {
+    position: absolute;
+    pointer-events: all;
+    display: flex;
+    flex-direction: column;
+}
+
+.pdf-input {
+    background: rgba(99, 102, 241, 0.05);
+    border: 1.5px solid var(--primary);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 14px;
+    color: #1e293b;
+    font-weight: 600;
+    width: 100%;
+    height: 100%;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.pdf-input:focus {
+    background: white;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.2);
+}
+
+.signature-section h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.signature-pad-wrapper {
+    background: white;
+    border-radius: 20px;
+    border: 2px dashed rgba(99, 102, 241, 0.3);
+    margin: 1.5rem 0;
+    position: relative;
+    height: 250px;
+}
+
+#signaturePad {
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+}
+
+.reg-actions {
+    margin-top: 3rem;
+}
+
+.btn.large {
+    padding: 1.25rem 3rem;
+    font-size: 1.1rem;
+    width: 100%;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.race-card-skeleton {
+    grid-column: 1 / -1;
+    padding: 4rem;
+    text-align: center;
+    color: var(--text-muted);
+    background: var(--glass-bg);
+    border-radius: 24px;
+    border: 1px dashed var(--glass-border);
+}
+
+/* Inline Form Layout */
+.a4-content {
+    display: block;
+    /* Flow naturally */
+    line-height: 1.6;
+}
+
+.a4-form-field {
+    display: inline-block;
+    vertical-align: baseline;
+    margin: 0 4px;
+}
+
+.a4-text-block {
+    display: inline;
+    white-space: pre-wrap;
+    margin: 0;
+}
+
+.a4-label {
+    display: none !important;
+    /* Force hide labels */
+}
+
+.a4-input {
+    display: inline-block;
+    min-width: 100px;
+    border: none;
+    border-bottom: 1px solid #ffffff;
+    background: transparent;
+    padding: 2px 5px;
+    font-family: inherit;
+    font-size: 1rem;
+    color: #ffffff;
+    outline: none;
+    vertical-align: baseline;
+}
+
+.designer-preview-btn {
+    margin-top: 15px;
+}
+
+/* Drag and Drop Designer Styles */
+.form-field-item {
+    cursor: move;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, 0.05);
+    margin-bottom: 8px;
+    padding: 8px;
+    border-radius: 8px;
+    transition: transform 0.2s, background 0.2s;
+}
+
+.form-field-item.dragging {
+    opacity: 0.5;
+    background: var(--accent-blue);
 }

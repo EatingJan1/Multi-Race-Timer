@@ -1,5 +1,9 @@
 const API_BASE = `http://${window.location.hostname}:5002/race`;
 const AUTH_BASE = `http://${window.location.hostname}:5002/auth`;
+const PUBLIC_BASE = `http://${window.location.hostname}:5002/public`;
+
+// Set PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 let participants = [];
 let activeIndex = -1;
@@ -10,6 +14,11 @@ let startMode = localStorage.getItem('startMode') || 'direct';
 let editMode = false;
 let editingIndex = -1;
 let uploadedLogoData = null;
+let currentRaceSettings = {};
+let signaturePad = null;
+let pdfTextFields = [];
+let isRegistrationPreview = false;
+let isKioskMode = false;
 
 const DEFAULT_COLUMNS = [
     { id: 'number', label: 'STARTNR.', visible: true, required: true, key: 'number' },
@@ -94,21 +103,386 @@ const loginForm = document.getElementById('loginForm');
 const loginUser = document.getElementById('loginUser');
 const loginPass = document.getElementById('loginPass');
 const loginError = document.getElementById('loginError');
+const cancelLoginBtn = document.getElementById('cancelLoginBtn');
+
+// New Landing Page Elements
+const landingPage = document.getElementById('landingPage');
+const registrationPage = document.getElementById('registrationPage');
+const adminApp = document.getElementById('adminApp');
+const upcomingRacesList = document.getElementById('upcomingRacesList');
+const finishedRacesList = document.getElementById('finishedRacesList');
+const adminLoginBtn = document.getElementById('adminLoginBtn');
+const backToLandingBtn = document.getElementById('backToLandingBtn');
+const startNumMinInput = document.getElementById('startNumMin');
+const startNumMaxInput = document.getElementById('startNumMax');
+const addFieldBtn = document.getElementById('addFieldBtn');
+const formFieldsList = document.getElementById('formFieldsList');
+const regA4Title = document.getElementById('regA4Title');
+const dynamicFormContainer = document.getElementById('dynamicFormContainer');
+const submitRegistrationBtn = document.getElementById('submitRegistrationBtn');
+const clearSignatureBtn = document.getElementById('clearSignatureBtn');
+
+// Status Select for Settings
+const raceStatusSelect = document.getElementById('raceStatusSelect');
+const startKioskBnt = document.getElementById('startKioskBnt');
+const viewActivePdfBtn = document.getElementById('viewActivePdfBtn');
+
+// Public Results Elements
+const publicResultsPage = document.getElementById('publicResultsPage');
+const resultsTitle = document.getElementById('resultsTitle');
+const resultsSubtitle = document.getElementById('resultsSubtitle');
+const publicResultsHeader = document.getElementById('publicResultsHeader');
+const publicResultsBody = document.getElementById('publicResultsBody');
+const backToLandingResultsBtn = document.getElementById('backToLandingResultsBtn');
 
 async function init() {
-    updateSettingsUI();
-    try {
-        await checkAuthStatus();
-        await fetchSessions();
-        if (currentRace) {
-            sessionSelect.value = currentRace;
-            await fetchParticipants();
+    const params = new URLSearchParams(window.location.search);
+    const kioskParam = params.get('k');
+
+    if (kioskParam) {
+        try {
+            const raceName = atob(kioskParam);
+            const res = await fetch(`${PUBLIC_BASE}/races`);
+            const races = await res.json();
+            const race = races.find(r => r.name === raceName);
+            if (race) {
+                // Force Kiosk Mode
+                await openRegistration(race, false, true);
+                startPolling();
+                return;
+            }
+        } catch (e) {
+            console.error("Kiosk boot failed", e);
         }
-    } catch (e) {
-        console.log("Initial load failed or auth required");
     }
+
+    updateSettingsUI();
+    const isLoggedIn = await checkAuthStatus();
+
+    if (isLoggedIn) {
+        showAdminApp();
+    } else {
+        showLandingPage();
+    }
+
     renderColumnConfig();
     startPolling();
+}
+
+function hideAllViews() {
+    if (landingPage) landingPage.style.display = 'none';
+    if (registrationPage) registrationPage.style.display = 'none';
+    if (adminApp) adminApp.style.display = 'none';
+    if (publicResultsPage) publicResultsPage.style.display = 'none';
+}
+
+async function showAdminApp() {
+    hideAllViews();
+    if (adminApp) adminApp.style.display = 'block';
+    await fetchSessions();
+    if (currentRace) {
+        sessionSelect.value = currentRace;
+        await fetchParticipants();
+        await fetchRaceSettings();
+    }
+}
+
+async function showLandingPage() {
+    hideAllViews();
+    if (landingPage) landingPage.style.display = 'block';
+    await fetchPublicRaces();
+}
+
+if (backToLandingResultsBtn) backToLandingResultsBtn.onclick = showLandingPage;
+
+async function fetchPublicRaces() {
+    try {
+        const res = await fetch(`${PUBLIC_BASE}/races`);
+        if (res.ok) {
+            const races = await res.json();
+            renderRaceGrid(races);
+        }
+    } catch (e) {
+        console.error("Public fetch failed", e);
+    }
+}
+
+function renderRaceGrid(races) {
+    upcomingRacesList.innerHTML = '';
+    finishedRacesList.innerHTML = '';
+
+    const upcoming = races.filter(r => !r.settings.finished && !r.settings.hidden);
+    const finished = races.filter(r => r.settings.finished && !r.settings.hidden);
+
+    if (upcoming.length === 0) {
+        upcomingRacesList.innerHTML = '<div class="race-card-skeleton">Keine aktiven Rennen</div>';
+    }
+
+    upcoming.forEach(race => {
+        const card = createRaceCard(race);
+        upcomingRacesList.appendChild(card);
+    });
+
+    finished.forEach(race => {
+        const card = createRaceCard(race);
+        finishedRacesList.appendChild(card);
+    });
+}
+
+function createRaceCard(race) {
+    const card = document.createElement('div');
+    card.className = 'race-card';
+    let statusBadge = '';
+    if (race.settings.finished) {
+        statusBadge = '<span class="badge badge-closed">Beendet</span>';
+    } else if (race.settings.allow_registration && !race.settings.registration_stop) {
+        statusBadge = '<span class="badge badge-live">Anmeldung Offen</span>';
+    } else if (race.settings.registration_stop) {
+        statusBadge = '<span class="badge badge-closed">Anmeldung geschlossen</span>';
+    } else {
+        statusBadge = '<span class="badge badge-future">Vorbereitung</span>';
+    }
+
+    card.innerHTML = `
+        <div>
+            <h3 class="race-card-title">${race.name.replace(/_/g, ' ')}</h3>
+            <div class="race-card-info">
+                ${statusBadge}
+            </div>
+        </div>
+        <button class="btn btn-primary small">
+            ${(race.settings.finished || race.settings.registration_stop) ? 'Ergebnisse / Liste' : 'Details / Anmeldung'}
+        </button>
+    `;
+
+    card.onclick = () => {
+        if (race.settings.allow_registration && !race.settings.registration_stop) {
+            openRegistration(race);
+        } else {
+            showPublicResults(race);
+        }
+    };
+    return card;
+}
+
+async function showPublicResults(race) {
+    hideAllViews();
+    currentRace = race.name;
+    resultsTitle.textContent = race.name.replace(/_/g, ' ');
+    resultsSubtitle.textContent = race.settings.finished ? 'Offizielle Endergebnisse' : 'Aktuelle Teilnehmerliste';
+
+    if (publicResultsPage) publicResultsPage.style.display = 'block';
+
+    publicResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Lade Daten...</td></tr>';
+
+    try {
+        const res = await fetch(`${PUBLIC_BASE}/results/${race.name}`);
+        if (!res.ok) throw new Error("Fehler beim Laden");
+        const people = await res.json();
+
+        // Sort if finished
+        if (race.settings.finished) {
+            people.sort((a, b) => {
+                if (a.duration && b.duration) return a.duration - b.duration;
+                if (a.duration) return -1;
+                if (b.duration) return 1;
+                return 0;
+            });
+        } else {
+            people.sort((a, b) => a.start_number - b.start_number);
+        }
+
+        // Header
+        let headerHtml = `<th>#</th><th>Name</th><th>Kategorie</th>`;
+        if (race.settings.finished) headerHtml += `<th>Zeit</th><th>Platz</th>`;
+        else headerHtml += `<th>Status</th>`;
+        publicResultsHeader.innerHTML = headerHtml;
+
+        // Body
+        publicResultsBody.innerHTML = '';
+        people.forEach((p, i) => {
+            const tr = document.createElement('tr');
+            let timeStr = p.duration ? p.duration.toFixed(3) + 's' : '-';
+            let statusStr = p.end_time ? 'Fertig' : (p.start_time ? 'Unterwegs' : 'Bereit');
+
+            let html = `<td>${p.start_number}</td><td>${p.name}</td><td>${p.tags.join(', ')}</td>`;
+            if (race.settings.finished) {
+                html += `<td>${timeStr}</td><td>${i + 1}.</td>`;
+            } else {
+                html += `<td>${statusStr}</td>`;
+            }
+            tr.innerHTML = html;
+            publicResultsBody.appendChild(tr);
+        });
+
+        if (people.length === 0) {
+            publicResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Noch keine Teilnehmer angemeldet.</td></tr>';
+        }
+
+    } catch (e) {
+        publicResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Daten konnten nicht geladen werden.</td></tr>';
+    }
+}
+
+async function openRegistration(race, isPreview = false, isKiosk = false) {
+    hideAllViews();
+    isRegistrationPreview = isPreview;
+    isKioskMode = isKiosk;
+    currentRace = race.name;
+    currentRaceSettings = race.settings || {};
+
+    if (backToLandingBtn) {
+        backToLandingBtn.style.display = isKiosk ? 'none' : 'block';
+    }
+
+    if (isKiosk) {
+        // Prevent browser back navigation
+        window.history.pushState(null, null, window.location.href);
+        window.onpopstate = () => window.history.go(1);
+    }
+    if (regA4Title) regA4Title.textContent = race.name.replace(/_/g, ' ');
+    if (registrationPage) registrationPage.style.display = 'block';
+
+    // Render the dynamic form from config in A4 look
+    renderDynamicForm(currentRaceSettings.form_config || []);
+
+    // Handle Preview Mode
+    if (isPreview) {
+        submitRegistrationBtn.textContent = "VORSCHAU-MODUS (Kein Absenden)";
+        submitRegistrationBtn.disabled = true;
+        submitRegistrationBtn.style.opacity = "0.5";
+    } else {
+        submitRegistrationBtn.textContent = "JETZT REGESTRIEREN";
+        submitRegistrationBtn.disabled = false;
+        submitRegistrationBtn.style.opacity = "1";
+    }
+
+    // Init Signature Pad
+    const canvas = document.getElementById('signaturePad');
+    signaturePad = new SignaturePad(canvas);
+
+    const resizeSignatureCanvas = () => {
+        const ratio = Math.max(window.devicePixelRatio || 1, 1);
+        canvas.width = canvas.offsetWidth * ratio;
+        canvas.height = canvas.offsetHeight * ratio;
+        canvas.getContext("2d").scale(ratio, ratio);
+        if (signaturePad) signaturePad.clear();
+    };
+    window.addEventListener("resize", resizeSignatureCanvas);
+    resizeSignatureCanvas();
+}
+
+function renderDynamicForm(config) {
+    dynamicFormContainer.innerHTML = '';
+
+    config.forEach(field => {
+        if (field.type === 'paragraph') {
+            const p = document.createElement('span'); // Changed to span for better inline flow
+            p.className = 'a4-text-block';
+            p.textContent = field.label;
+            dynamicFormContainer.appendChild(p);
+        } else {
+            const group = document.createElement('span'); // Changed to span
+            group.className = 'a4-form-field';
+
+            const label = document.createElement('label');
+            label.className = 'a4-label';
+            label.textContent = field.label;
+            group.appendChild(label);
+
+            let input;
+            if (field.type === 'select') {
+                input = document.createElement('select');
+                input.className = 'a4-input';
+                const options = field.options ? field.options.split(',') : [];
+                options.forEach(opt => {
+                    const o = document.createElement('option');
+                    o.value = opt.trim();
+                    o.textContent = opt.trim();
+                    input.appendChild(o);
+                });
+            } else {
+                input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'a4-input';
+                input.placeholder = '';
+            }
+
+            input.id = `field_${field.id}`;
+            input.dataset.name = field.label;
+            input.required = true;
+
+            group.appendChild(input);
+            dynamicFormContainer.appendChild(group);
+        }
+    });
+}
+
+async function loadPdfTemplate(raceName) {
+    try {
+        const url = `${PUBLIC_BASE}/template/${raceName}`;
+        console.log("Fetching PDF from:", url);
+        const res = await fetch(url);
+        if (!res.ok) {
+            console.error("PDF Fetch failed:", res.status, res.statusText);
+            throw new Error(`PDF nicht gefunden (${res.status})`);
+        }
+
+        const blob = await res.blob();
+        const arrayBuffer = await blob.arrayBuffer();
+        console.log("PDF loaded, size:", arrayBuffer.byteLength);
+
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        const page = await pdf.getPage(1);
+
+        const scale = 1.5;
+        const viewport = page.getViewport({ scale });
+        const canvas = document.getElementById('regPdfCanvas');
+        if (!canvas) throw new Error("Canvas 'regPdfCanvas' nicht gefunden");
+
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+
+        await page.render({ canvasContext: context, viewport }).promise;
+        console.log("PDF page rendered");
+
+        const textContent = await page.getTextContent();
+        extractTextFields(textContent, viewport);
+    } catch (e) {
+        console.error("Detailed PDF load error:", e);
+        alert("Fehler beim Laden der PDF-Vorlage: " + e.message);
+    }
+}
+
+function extractTextFields(textContent, viewport) {
+    const overlay = document.getElementById('pdfOverlay');
+    overlay.innerHTML = '';
+    pdfTextFields = [];
+
+    textContent.items.forEach(item => {
+        const text = item.str;
+        if (text.includes('/@')) {
+            const matches = text.match(/\/@(.*?)\@\//g);
+            if (matches) {
+                matches.forEach(match => {
+                    const fieldName = match.replace(/\/@|\@\//g, '');
+                    const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+
+                    const input = document.createElement('input');
+                    input.className = 'pdf-input';
+                    input.placeholder = fieldName;
+                    input.style.left = `${tx[4]}px`;
+                    input.style.top = `${viewport.height - tx[5] - 20}px`;
+                    input.style.width = `${item.width * viewport.scale}px`;
+
+                    overlay.appendChild(input);
+                    pdfTextFields.push({ name: fieldName, element: input, x: tx[4], y: tx[5], width: item.width });
+                });
+            }
+        }
+    });
 }
 
 async function checkAuthStatus() {
@@ -143,8 +517,7 @@ if (loginForm) {
                 loginModal.style.display = 'none';
                 loginError.style.display = 'none';
                 loginPass.value = '';
-                await fetchSessions();
-                if (currentRace) await fetchParticipants();
+                await showAdminApp();
             } else {
                 loginError.style.display = 'block';
             }
@@ -173,7 +546,144 @@ function updateSettingsUI() {
     if (editSwitch) editSwitch.checked = editMode;
     if (editActionsView) editActionsView.style.display = (editMode && currentRace) ? 'block' : 'none';
     if (actionsHeader) actionsHeader.style.display = (editMode && currentRace) ? 'table-cell' : 'none';
+
+    // Race Status Select
+    if (raceStatusSelect) {
+        if (currentRaceSettings.allow_registration) raceStatusSelect.value = 'open';
+        else if (currentRaceSettings.registration_stop) raceStatusSelect.value = 'registration_stop';
+        else if (currentRaceSettings.hidden) raceStatusSelect.value = 'hidden';
+        else if (currentRaceSettings.finished) raceStatusSelect.value = 'finished';
+        else raceStatusSelect.value = 'preparation';
+    }
+
+    if (startNumMinInput) startNumMinInput.value = currentRaceSettings.start_num_min || '';
+    if (startNumMaxInput) startNumMaxInput.value = currentRaceSettings.start_num_max || '';
+
+    renderFormDesigner(currentRaceSettings.form_config || []);
+
     renderTable();
+}
+
+function renderFormDesigner(config) {
+    if (!formFieldsList) return;
+    formFieldsList.innerHTML = '';
+    config.forEach((field, index) => {
+        const item = document.createElement('div');
+        item.className = 'form-field-item';
+        item.draggable = true;
+        item.dataset.index = index;
+
+        // Drag Events
+        item.ondragstart = (e) => {
+            e.dataTransfer.setData('text/plain', index);
+            item.classList.add('dragging');
+        };
+        item.ondragover = (e) => e.preventDefault();
+        item.ondrop = (e) => {
+            e.preventDefault();
+            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const toIndex = index;
+            if (fromIndex !== toIndex) {
+                const moved = currentRaceSettings.form_config.splice(fromIndex, 1)[0];
+                currentRaceSettings.form_config.splice(toIndex, 0, moved);
+                saveRaceSettings();
+                renderFormDesigner(currentRaceSettings.form_config);
+            }
+        };
+        item.ondragend = () => item.classList.remove('dragging');
+
+        const topRow = document.createElement('div');
+        topRow.style.display = 'flex';
+        topRow.style.gap = '5px';
+        topRow.style.alignItems = 'center';
+        topRow.innerHTML = `
+            <div class="drag-handle">☰</div>
+            <select onchange="updateFormField(${index}, 'type', this.value)" style="width: 80px; font-size: 0.8rem;">
+                <option value="text" ${field.type === 'text' ? 'selected' : ''}>Eingabe</option>
+                <option value="select" ${field.type === 'select' ? 'selected' : ''}>Liste</option>
+                <option value="paragraph" ${field.type === 'paragraph' ? 'selected' : ''}>Text</option>
+            </select>
+            <input type="text" placeholder="${field.type === 'paragraph' ? 'Inhalt...' : ''}" 
+                value="${field.label}" onchange="updateFormField(${index}, 'label', this.value)" style="flex-grow: 1;">
+            <button class="btn btn-outline tiny" onclick="removeFormField(${index})">×</button>
+        `;
+
+        item.appendChild(topRow);
+
+        if (field.type === 'select') {
+            const optRow = document.createElement('div');
+            optRow.style.marginTop = '5px';
+            optRow.innerHTML = `<input type="text" placeholder="Optionen (Kat A, Kat B...)" 
+                value="${field.options || ''}" onchange="updateFormField(${index}, 'options', this.value)" style="width: 100%; font-size: 0.8rem;">`;
+            item.appendChild(optRow);
+        }
+
+        formFieldsList.appendChild(item);
+    });
+
+    // Add Preview Button
+    if (config.length > 0) {
+        const previewBtn = document.createElement('button');
+        previewBtn.className = 'btn btn-outline tiny designer-preview-btn';
+        previewBtn.textContent = '👁 Vorschau';
+        previewBtn.style.display = 'block';
+        previewBtn.style.width = '100%';
+        previewBtn.onclick = () => {
+            const mockRace = {
+                name: currentRace || "Vorschau",
+                settings: currentRaceSettings,
+                form_config: config
+            };
+            openRegistration(mockRace, true);
+        };
+        formFieldsList.appendChild(previewBtn);
+    }
+}
+
+window.updateFormField = (index, key, value) => {
+    if (!currentRaceSettings.form_config) currentRaceSettings.form_config = [];
+    currentRaceSettings.form_config[index][key] = value;
+    saveRaceSettings();
+    renderFormDesigner(currentRaceSettings.form_config);
+};
+
+window.removeFormField = (index) => {
+    currentRaceSettings.form_config.splice(index, 1);
+    saveRaceSettings();
+    renderFormDesigner(currentRaceSettings.form_config);
+};
+
+if (addFieldBtn) addFieldBtn.onclick = () => {
+    if (!currentRaceSettings.form_config) currentRaceSettings.form_config = [];
+    currentRaceSettings.form_config.push({ id: 'field_' + Date.now(), label: 'Neues Feld', type: 'text' });
+    saveRaceSettings();
+    renderFormDesigner(currentRaceSettings.form_config);
+};
+
+async function fetchRaceSettings() {
+    if (!currentRace) return;
+    try {
+        currentRaceSettings = await apiCall(`/${currentRace}/settings`, 'GET');
+        updateSettingsUI();
+    } catch (e) {
+        console.error("Failed to fetch settings", e);
+    }
+}
+
+async function saveRaceSettings() {
+    if (!currentRace || !raceStatusSelect) return;
+
+    const val = raceStatusSelect.value;
+    const settingsToSend = {
+        allow_registration: val === 'open',
+        registration_stop: val === 'registration_stop',
+        hidden: val === 'hidden',
+        finished: val === 'finished',
+        form_config: currentRaceSettings.form_config || [],
+        start_num_min: parseInt(startNumMinInput.value) || 0,
+        start_num_max: parseInt(startNumMaxInput.value) || 0
+    };
+    await apiCall(`/${currentRace}/settings`, 'POST', settingsToSend);
 }
 
 async function fetchSessions() {
@@ -248,8 +758,12 @@ function updateTagFilter() {
 function startPolling() {
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(async () => {
-        await fetchSessions();
-        if (currentRace && !editMode) await fetchParticipants();
+        if (adminApp.style.display === 'block') {
+            await fetchSessions();
+            if (currentRace && !editMode) await fetchParticipants();
+        } else {
+            await fetchPublicRaces();
+        }
     }, 2000);
 }
 
@@ -317,13 +831,13 @@ function renderTable() {
             const rank = p.rank;
             rankDisplay = rank + '.';
 
-            if (winnerDuration && p.duration > winnerDuration) {
+            if (winnerDuration && p.duration === winnerDuration) {
+                diffDisplay = 'Bestzeit';
+                diffClass = 'best-time';
+            } else if (winnerDuration && p.duration > winnerDuration) {
                 const diff = p.duration - winnerDuration;
                 diffDisplay = `+${diff.toFixed(3)}s`;
                 diffClass = 'diff-col';
-            } else if (rank === 1) {
-                diffDisplay = 'Bestzeit';
-                diffClass = 'best-time';
             }
         }
 
@@ -351,6 +865,7 @@ function renderTable() {
             rowHtml += `
                 <td data-label="Aktionen">
                     <div class="edit-row-actions">
+                        <button class="btn-icon" onclick="event.stopPropagation(); downloadSignedPdf(${globalIndex})" title="PDF herunterladen">✉️</button>
                         <button class="btn-icon" onclick="event.stopPropagation(); openEditModal(${globalIndex})" title="Bearbeiten">✏️</button>
                         <button class="btn-icon danger-icon" onclick="event.stopPropagation(); deleteParticipant(${globalIndex})" title="Löschen">🗑️</button>
                     </div>
@@ -415,6 +930,16 @@ function updateActiveDisplay() {
         : '';
     activeName.innerHTML = `${p.name}${tagsHtml}`;
     activeStartNumber.textContent = `#${p.start_number}`;
+
+    activeStartNumber.textContent = `#${p.start_number}`;
+
+    if (viewActivePdfBtn) {
+        viewActivePdfBtn.onclick = (e) => {
+            e.stopPropagation();
+            downloadSignedPdf(activeIndex);
+        };
+    }
+
     if (p.start_time && !p.end_time) {
         mainActionBtn.textContent = 'STOP DRÜCKEN';
         mainActionBtn.style.background = 'var(--accent-red)';
@@ -524,7 +1049,7 @@ function openExportMenu() {
     checkMapping.forEach(mapping => {
         const checkbox = document.getElementById(mapping.id);
         const label = checkbox.closest('.check-container');
-        
+
         // Prüfen, ob IRGENDJEMAND Daten für dieses Feld hat
         const hasData = participants.some(p => {
             if (mapping.type === 'array') {
@@ -701,33 +1226,33 @@ function prepareAndPrint() {
 
     const raceTitle = currentRace ? currentRace.replace(/_/g, ' ') : 'Wettbewerb';
     let tagTitle = filter ? `Kategorie: ${filter}` : 'Gesamtwertung';
-    
+
     let list = participants.filter(p => !filter || (p.tags && p.tags.includes(filter)));
     list = list.filter(p => p.duration);
 
     // 1. Durchschnitt berechnen
-    const averageDuration = list.length > 0 
-        ? list.reduce((sum, p) => sum + p.duration, 0) / list.length 
+    const averageDuration = list.length > 0
+        ? list.reduce((sum, p) => sum + p.duration, 0) / list.length
         : 0;
 
     if (sortBy === 'mean') {
         tagTitle += ` (Ø: ${averageDuration.toFixed(3)}s)`;
-        
+
         // Sortieren nach absoluter Differenz zum Durchschnitt
         list.sort((a, b) => Math.abs(a.duration - averageDuration) - Math.abs(b.duration - averageDuration));
-        
+
         // Plätze neu vergeben: Wer am nächsten dran ist, bekommt Platz 1
         list.forEach((p, i) => {
             const currentDiff = Math.abs(p.duration - averageDuration);
             const prevDiff = i > 0 ? Math.abs(list[i - 1].duration - averageDuration) : null;
-            
+
             p.rank = (i > 0 && currentDiff === prevDiff) ? list[i - 1].rank : i + 1;
         });
     } else {
         // Klassische Sortierung nach Zeit für das Standard-Ranking
         list.sort((a, b) => a.duration - b.duration);
-        list.forEach((p, i) => { 
-            p.rank = (i > 0 && p.duration === list[i - 1].duration) ? list[i - 1].rank : i + 1; 
+        list.forEach((p, i) => {
+            p.rank = (i > 0 && p.duration === list[i - 1].duration) ? list[i - 1].rank : i + 1;
         });
 
         // Falls danach noch nach Name/Startnummer sortiert werden soll:
@@ -809,7 +1334,8 @@ async function apiCall(endpoint, method, body = null) {
         });
         if (backendError) backendError.style.display = 'none';
         if (res.status === 401) {
-            if (loginModal && loginModal.style.display !== 'flex') {
+            // Only show login modal if we are clearly in the admin app
+            if (adminApp.style.display === 'block' && loginModal && loginModal.style.display !== 'flex') {
                 loginModal.style.display = 'flex';
                 loginUser.focus();
             }
@@ -864,7 +1390,7 @@ function renderColumnConfig() {
 
         item.addEventListener('dragend', () => {
             item.classList.remove('dragging');
-            document.querySelectorAll('.column-config-item').forEach(el => 
+            document.querySelectorAll('.column-config-item').forEach(el =>
                 el.classList.remove('drag-over-top', 'drag-over-bottom')
             );
         });
@@ -876,7 +1402,7 @@ function renderColumnConfig() {
 
             const bounding = item.getBoundingClientRect();
             const offset = e.clientY - bounding.top;
-            
+
             item.classList.remove('drag-over-top', 'drag-over-bottom');
             if (offset < bounding.height / 2) {
                 item.classList.add('drag-over-top');
@@ -1031,10 +1557,201 @@ if (editSwitch) editSwitch.onchange = () => {
     updateSettingsUI();
 };
 
+if (raceStatusSelect) raceStatusSelect.onchange = saveRaceSettings;
+
+
+if (adminLoginBtn) adminLoginBtn.onclick = () => {
+    loginModal.style.display = 'flex';
+    loginUser.focus();
+};
+
+if (cancelLoginBtn) cancelLoginBtn.onclick = () => {
+    loginModal.style.display = 'none';
+    loginError.style.display = 'none';
+};
+
+if (startKioskBnt) startKioskBnt.onclick = () => {
+    if (!currentRace) return;
+    // Open in new tab with obfuscated hash
+    const hash = btoa(currentRace);
+    const url = `${window.location.origin}${window.location.pathname}?k=${hash}`;
+    window.open(url, '_blank');
+};
+
+if (backToLandingBtn) backToLandingBtn.onclick = () => {
+    if (isRegistrationPreview) showAdminApp();
+    else showLandingPage();
+};
+
+if (clearSignatureBtn) clearSignatureBtn.onclick = () => signaturePad.clear();
+
+if (submitRegistrationBtn) {
+    submitRegistrationBtn.onclick = async () => {
+        if (signaturePad.isEmpty()) {
+            alert("Bitte unterschreiben Sie das Formular.");
+            return;
+        }
+
+        let participantName = ""; // Initialize empty
+        let participantTags = [];
+        let finalPdfUri = null;
+
+        // Pre-check mandatory fields
+        const config = currentRaceSettings.form_config || [];
+        for (const field of config) {
+            if (field.type !== 'paragraph') {
+                const input = document.getElementById(`field_${field.id}`);
+                if (input && !input.value.trim()) {
+                    alert(`Bitte füllen Sie das Feld "${field.label}" aus.`);
+                    input.focus();
+                    return;
+                }
+            }
+        }
+
+        // Generate final A4 PDF using pdf-lib
+        let signedPdfBase64 = null;
+        try {
+            const pdfDoc = await PDFLib.PDFDocument.create();
+            const page = pdfDoc.addPage([595.28, 841.89]); // A4
+            const { width, height } = page.getSize();
+            const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
+            const fontRegular = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+            // Improved Helper for True Inline Text Flow
+            const drawInFlow = (text, size, fontObj, isValue = false) => {
+                if (!text) return;
+                const words = text.split(/(\s+)/); // Keep whitespace
+                words.forEach(part => {
+                    if (part === '\n') {
+                        xOffset = 50;
+                        yOffset -= size * 1.5;
+                        return;
+                    }
+                    const partWidth = fontObj.widthOfTextAtSize(part, size);
+                    if (xOffset + partWidth > 550) {
+                        xOffset = 50;
+                        yOffset -= size * 1.5;
+                    }
+
+                    if (part.trim() || isValue) {
+                        page.drawText(part, { x: xOffset, y: yOffset, size, font: fontObj });
+                        if (isValue) {
+                            page.drawLine({
+                                start: { x: xOffset, y: yOffset - 2 },
+                                end: { x: xOffset + partWidth, y: yOffset - 2 },
+                                thickness: 0.8,
+                                color: PDFLib.rgb(0, 0, 0)
+                            });
+                        }
+                    }
+                    xOffset += partWidth;
+                });
+                if (isValue) xOffset += 5; // Extra spacing after values
+            };
+
+            page.drawText(`${currentRace.replace(/_/g, ' ')}`, { x: 50, y: height - 60, size: 24, font });
+            page.drawLine({ start: { x: 50, y: height - 75 }, end: { x: 550, y: height - 75 }, thickness: 1, color: PDFLib.rgb(0, 0, 0) });
+
+            let yOffset = height - 120;
+            let xOffset = 50;
+            const config = currentRaceSettings.form_config || [];
+
+            config.forEach(field => {
+                if (field.type === 'paragraph') {
+                    drawInFlow(field.label, 11, fontRegular);
+                } else {
+                    const input = document.getElementById(`field_${field.id}`);
+                    if (!input) return;
+
+                    const value = input.value;
+                    const label = field.label;
+
+                    if (label.toLowerCase().includes('name') && !participantName) participantName = value;
+                    if (label.toLowerCase().includes('tag') || label.toLowerCase().includes('kategorie')) {
+                        participantTags = value.split(',').map(t => t.trim());
+                    }
+
+                    drawInFlow(value, 12, fontRegular, true);
+                }
+                // Very simple page boundary check
+                if (yOffset < 100) { /* Next page logic would go here */ }
+            });
+
+            if (!participantName || participantName === "Gast") {
+                alert("Bitte stellen Sie sicher, dass ein Feld für den 'Namen' vorhanden und ausgefüllt ist.");
+                return;
+            }
+
+            const signatureData = signaturePad.toDataURL();
+            const pngImage = await pdfDoc.embedPng(signatureData);
+            const pngDims = pngImage.scale(0.4);
+
+            yOffset -= 40;
+            page.drawText("Unterschrift:", { x: 50, y: yOffset, size: 12, font });
+            page.drawImage(pngImage, {
+                x: 50,
+                y: yOffset - 110,
+                width: pngDims.width,
+                height: pngDims.height,
+            });
+
+            page.drawText(`Datum: ${new Date().toLocaleString()}`, { x: 50, y: 50, size: 10, font: fontRegular });
+
+            finalPdfUri = await pdfDoc.saveAsBase64({ dataUri: true });
+            signedPdfBase64 = finalPdfUri;
+        } catch (e) {
+            console.error("PDF creation failed", e);
+        }
+
+        const regData = {
+            name: participantName,
+            tags: participantTags,
+            signed_pdf: signedPdfBase64
+        };
+
+        try {
+            const res = await fetch(`${PUBLIC_BASE}/register/${currentRace}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(regData)
+            });
+            if (res.ok) {
+                const result = await res.json();
+
+                if (isKioskMode) {
+                    alert(`Erfolgreich angemeldet!\nDeine Startnummer: ${result.start_number}`);
+                    // Reset Form for next user
+                    signaturePad.clear();
+                    renderDynamicForm(currentRaceSettings.form_config || []);
+                    window.scrollTo(0, 0);
+                } else {
+                    alert(`Erfolgreich angemeldet! Deine Startnummer: ${result.start_number}\n\nDeine Anmeldung wird nun heruntergeladen.`);
+                    // Trigger Download
+                    const link = document.createElement('a');
+                    link.href = finalPdfUri;
+                    link.download = `Anmeldung_${participantName.replace(/\s+/g, '_')}.pdf`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showLandingPage();
+                }
+            }
+            else {
+                const err = await res.json();
+                alert("Fehler: " + (err.message || "Anmeldung fehlgeschlagen"));
+            }
+        } catch (e) {
+            alert("Fehler bei der Anmeldung.");
+        }
+    };
+}
+
 window.onclick = (e) => {
     if (e.target == settingsModal) settingsModal.classList.remove('active');
     if (e.target == editParticipantModal) editParticipantModal.classList.remove('active');
     if (e.target == exportModal) exportModal.classList.remove('active');
+    if (e.target == loginModal && !adminApp.style.display) loginModal.style.display = 'none';
 };
 
 if (importCsvBtn) {
@@ -1042,4 +1759,36 @@ if (importCsvBtn) {
 }
 
 activeSection.addEventListener('click', handleMainAction);
+async function downloadSignedPdf(index) {
+    const p = participants[index];
+    if (!p || !currentRace) return;
+
+    // Matches backend sanitization
+    const sanitizeFilename = (num, name) => {
+        const cleanName = name.trim().split(/\s+/).join('_').replace(/[^a-zA-Z0-9_-]/g, '');
+        return `${num}_${cleanName}.pdf`;
+    };
+
+    const filename = sanitizeFilename(p.start_number, p.name);
+    const url = `${API_BASE}/${encodeURIComponent(currentRace)}/pdf/${encodeURIComponent(filename)}`;
+
+    try {
+        const response = await fetch(url, { credentials: 'include' });
+        if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            alert(`PDF wurde nicht gefunden.\n\nDatei: ${filename}\nGrund: ${errBody.message || response.statusText}`);
+            return;
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        window.open(blobUrl, '_blank');
+    } catch (e) {
+        console.error("Download failed", e);
+        alert(`Konnte PDF nicht laden: ${e.message}\n\nBitte prüfen Sie die Internetverbindung.`);
+    }
+}
+
+window.downloadSignedPdf = downloadSignedPdf;
+
 init();

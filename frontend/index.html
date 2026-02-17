@@ -20,6 +20,10 @@
         href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Outfit:wght@100..900&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- New Libraries for PDF & Signature -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
 </head>
 
 <body>
@@ -35,7 +39,111 @@
             <span>Verbindung zum Backend verloren - Bitte Backend starten!</span>
         </div>
     </div>
-    <div class="container no-print">
+
+    <!-- Landing Page View -->
+    <div id="landingPage" class="landing-container" style="display: none;">
+        <header class="landing-header">
+            <div class="glass-nav">
+                <img src="logo.png" alt="Logo" class="logo-small">
+                <button id="adminLoginBtn" class="btn btn-outline small">Admin Login</button>
+            </div>
+            <div class="hero-section">
+                <h1 class="hero-title">Rennen <span class="accent-text">Portal</span></h1>
+                <p class="hero-subtitle">Alle Rennen im Überblick. Melde dich jetzt an oder verfolge die Ergebnisse.</p>
+            </div>
+        </header>
+
+        <main class="landing-content">
+            <div class="race-grid-section">
+                <h2>Aktuelle & Kommende Rennen</h2>
+                <div id="upcomingRacesList" class="race-grid">
+                    <!-- Populated by JS -->
+                    <div class="race-card-skeleton">Lade Rennen...</div>
+                </div>
+            </div>
+
+            <div class="race-grid-section">
+                <h2>Abgeschlossene Rennen</h2>
+                <div id="finishedRacesList" class="race-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Registration Page View -->
+    <div id="registrationPage" class="registration-container" style="display: none;">
+        <div class="reg-header">
+            <button id="backToLandingBtn" class="btn-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                Zurück
+            </button>
+            <h2 id="regRaceTitle">Rennanmeldung</h2>
+        </div>
+
+        <div class="reg-content">
+            <div id="registrationSheet" class="a4-page">
+                <div class="a4-header">
+                    <h1 id="regA4Title">Rennanmeldung</h1>
+                </div>
+
+                <div id="dynamicFormContainer" class="a4-content">
+                    <!-- Dynamic content: text blocks, fields, etc. -->
+                </div>
+
+                <div class="signature-section" style="margin-top: 40px;">
+                    <div class="signature-pad-wrapper" style="height: 150px; border: 1px solid #eee; background: #fff;">
+                        <canvas id="signaturePad"></canvas>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span
+                            style="font-size: 11px; color: #666; border-top: 1px solid #000; width: 200px; margin-top: 5px;">Unterschrift
+                            Teilnehmer</span>
+                        <button id="clearSignatureBtn" class="btn btn-outline tiny">Löschen</button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="max-width: 210mm; margin: 20px auto; padding: 0 20px;">
+                <button id="submitRegistrationBtn" class="btn btn-primary large" style="width: 100%;">JETZT
+                    ANMELDEN</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="publicResultsPage" class="container" style="display: none;">
+        <header class="landing-header">
+            <div class="glass-nav">
+                <img src="logo.png" alt="Logo" class="logo-small">
+                <button id="backToLandingResultsBtn" class="btn btn-outline small">Zurück</button>
+            </div>
+            <div class="hero-section">
+                <h1 class="hero-title" id="resultsTitle">Ergebnisse</h1>
+                <p class="hero-subtitle" id="resultsSubtitle"></p>
+            </div>
+        </header>
+
+        <main class="landing-content">
+            <div class="card">
+                <div class="table-container">
+                    <table id="publicResultsTable">
+                        <thead>
+                            <tr id="publicResultsHeader">
+                                <!-- Populated by JS -->
+                            </tr>
+                        </thead>
+                        <tbody id="publicResultsBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="adminApp" class="container no-print" style="display: none;">
         <header>
             <h1>ZEITNEHMUNG</h1>
             <p class="subtitle">Präzise. Zuverlässig. Plattformübergreifend.</p>
@@ -60,7 +168,7 @@
                         </svg>
                         <span>Export</span>
                     </button>
-                    
+
                 </div>
             </div>
 
@@ -95,30 +203,38 @@
 
 
                 <div class="settings-section-title">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke="currentColor"
-                        stroke-linecap="round" stroke-linejoin="round"><title>trash-can</title><path d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M9,8H11V17H9V8M13,8H15V17H13V8Z" /></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                        <title>trash-can</title>
+                        <path
+                            d="M9,3V4H4V6H5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V6H20V4H15V3H9M9,8H11V17H9V8M13,8H15V17H13V8Z" />
+                    </svg>
                     Lösche das aktuellen Rennens
                 </div>
 
-                 <div class="setting-item flex-between">
+                <div class="setting-item flex-between">
                     <label>Aktuelles Datenset löschen:</label>
                     <button id="deleteSessionBtn" class="btn-icon danger-icon" title="Lauf löschen">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
-                                </path>
-                                <line x1="10" y1="11" x2="10" y2="17"></line>
-                                <line x1="14" y1="11" x2="14" y2="17"></line>
-                            </svg>
-                            
-                        </button>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                            </path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                        </svg>
+
+                    </button>
                 </div>
 
                 <div class="settings-section-title">
-                    <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke="currentColor"
-                        stroke-linecap="round" stroke-linejoin="round"><title>stack-exchange</title><path d="M3.9 10.72H20V14.03H3.9V10.72M3.9 6.44H20V9.75H3.9V6.44M17.5 2H6.5C5.06 2 3.9 3.18 3.9 4.65V5.5H20V4.65C20 3.18 18.88 2 17.5 2M3.9 15V15.84C3.9 17.31 5.06 18.5 6.5 18.5H13.37V22L16.77 18.5H17.5C18.94 18.5 20.11 17.31 20.11 15.84V15H3.9Z" /></svg>
-                    
+                    <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+                        <title>stack-exchange</title>
+                        <path
+                            d="M3.9 10.72H20V14.03H3.9V10.72M3.9 6.44H20V9.75H3.9V6.44M17.5 2H6.5C5.06 2 3.9 3.18 3.9 4.65V5.5H20V4.65C20 3.18 18.88 2 17.5 2M3.9 15V15.84C3.9 17.31 5.06 18.5 6.5 18.5H13.37V22L16.77 18.5H17.5C18.94 18.5 20.11 17.31 20.11 15.84V15H3.9Z" />
+                    </svg>
+
                     Modus & Steuerung
                 </div>
 
@@ -140,20 +256,75 @@
                 <div class="divider"></div>
 
                 <div class="settings-section-title">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path
-                            d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18">
-                        </path>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                        <polyline points="10 9 9 9 8 9"></polyline>
                     </svg>
-                    Spalten konfigurieren
+                    Anmeldung & Veröffentlichung
                 </div>
-                <p class="subtitle" style="font-size: 0.8rem; margin-bottom: 1.2rem; opacity: 0.8;">
-                    Halte ein Element gedrückt, um es zu verschieben | Doppelklick zum Ausblenden"
-                </p>
 
-                <div id="columnConfigList" class="column-config-list">
-                    <!-- Populated by JS -->
+                <div class="setting-item flex-between">
+                    <label>Status des Rennens:</label>
+                    <select id="raceStatusSelect" class="form-input" style="width: auto; min-width: 150px;">
+                        <option value="preparation">Privat</option>
+                        <option value="open">Anmeldung Offen</option>
+                        <option value="registration_stop">Anmelde-Stopp</option>
+                        <option value="hidden">Ausgeblendet</option>
+                        <option value="finished">Beendet</option>
+                    </select>
+                </div>
+                <div class="setting-item flex-between"
+                    style="background: rgba(var(--accent-blue-rgb), 0.1); padding: 10px; border-radius: 12px; border: 1px solid var(--accent-blue);">
+                    <div style="flex-grow: 1;">
+                        <label style="margin: 0; display: block; font-weight: bold;">Tablet-Modus (Kiosk)</label>
+                        <span class="subtitle" style="font-size: 0.75rem;">Formular setzt sich nach Anmeldung
+                            automatisch zurück.</span>
+                    </div>
+                    <button id="startKioskBnt" class="btn btn-primary tiny" style="margin-left: 10px;">Starten</button>
+                </div>
+
+                <div class="setting-item flex-between">
+                    <label>Startnummern Bereich:</label>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <input type="number" id="startNumMin" placeholder="Von" class="form-input" style="width: 70px;">
+                        <span>-</span>
+                        <input type="number" id="startNumMax" placeholder="Bis" class="form-input" style="width: 70px;">
+                    </div>
+                </div>
+
+                <div class="setting-item">
+                    <label>Anmeldeformular Designer:</label>
+                    <div id="formDesignerContainer" class="form-designer">
+                        <div id="formFieldsList" class="form-fields-list">
+                            <!-- Fields will be added here -->
+                        </div>
+                        <button id="addFieldBtn" class="btn btn-outline tiny" style="margin-top: 10px;">+ Feld
+                            hinzufügen</button>
+                    </div>
+                </div>
+
+                <div class="divider"></div>
+
+                <div class="settings-section">
+                    <div class="settings-section-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-7m0-18H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7m0-18v18">
+                            </path>
+                        </svg>
+                        Spalten konfigurieren
+                    </div>
+                    <p class="subtitle" style="font-size: 0.8rem; margin-bottom: 1.2rem; opacity: 0.8;">
+                        Halte ein Element gedrückt, um es zu verschieben | Doppelklick zum Ausblenden"
+                    </p>
+
+                    <div id="columnConfigList" class="column-config-list">
+                        <!-- Populated by JS -->
+                    </div>
                 </div>
 
                 <div class="modal-actions" style="margin-top: 2rem; flex-direction: column; gap: 0.75rem;">
@@ -173,7 +344,11 @@
             <div class="start-number-badge" id="activeStartNumber">#--</div>
             <div class="person-name" id="activeName">Niemand ausgewählt</div>
             <div class="timer-display" id="mainTimer">00:00:00.0</div>
-            <button id="mainActionBtn" class="btn btn-start">START DRÜCKEN</button>
+            <div class="active-actions" style="display: flex; gap: 10px; width: 100%;">
+                <button id="mainActionBtn" class="btn btn-start" style="flex: 1;">START DRÜCKEN</button>
+                <!--<button id="viewActivePdfBtn" class="btn btn-outline" style="width: auto; padding: 0 1.5rem;"
+                    title="PDF anzeigen">📄</button> -->
+            </div>
         </div>
 
         <!-- Participants List -->
@@ -226,8 +401,12 @@
                 <div id="loginError" style="color: #ff4d4d; margin-bottom: 1rem; display: none; font-size: 0.9rem;">
                     Zugangsdaten inkorrekt.
                 </div>
-                <button type="submit" class="btn btn-primary"
-                    style="width: 100%; justify-content: center;">Einloggen</button>
+                <div class="modal-actions" style="margin-top: 1rem; flex-direction: column; gap: 0.5rem;">
+                    <button type="submit" class="btn btn-primary"
+                        style="width: 100%; justify-content: center;">Einloggen</button>
+                    <button type="button" id="cancelLoginBtn" class="btn btn-outline"
+                        style="width: 100%; justify-content: center;">Abbrechen</button>
+                </div>
             </form>
         </div>
     </div>
