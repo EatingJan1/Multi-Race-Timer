@@ -57,6 +57,7 @@ const activeStartNumber = document.getElementById('activeStartNumber');
 const mainTimer = document.getElementById('mainTimer');
 const mainActionBtn = document.getElementById('mainActionBtn');
 const importCsvBtn = document.getElementById('importCsvBtn');
+const createEmptyRaceBtn = document.getElementById('createEmptyRaceBtn');
 
 // Modals
 const settingsBtn = document.getElementById('settingsBtn');
@@ -1759,8 +1760,55 @@ window.onclick = (e) => {
     if (e.target == loginModal && !adminApp.style.display) loginModal.style.display = 'none';
 };
 
+
+// Suche nach: if (importCsvBtn) { ... }
+// Und ersetze es hiermit:
+
 if (importCsvBtn) {
-    importCsvBtn.onclick = () => csvFileInput.click();
+    importCsvBtn.onclick = (e) => {
+        // Verhindert das Auslösen des Imports, wenn man nur auf den Link im Dropdown klickt
+        if (e.target.closest('#createEmptyRaceBtn')) return;
+        csvFileInput.click();
+    };
+}
+
+// Neue Logik für leere Tabelle
+if (createEmptyRaceBtn) {
+    createEmptyRaceBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Wichtig, damit das Menü schließt und kein doppelter Klick passiert
+
+        const raceName = prompt("Name für die neue Liste:");
+        if (!raceName || raceName.trim() === "") return;
+
+        // Daten zurücksetzen
+        participants = [];
+        currentRace = raceName.trim();
+        localStorage.setItem('currentRace', currentRace);
+
+        // UI Update
+        if (typeof activeName !== 'undefined') activeName.textContent = currentRace;
+        renderParticipants();
+
+        // Automatisch in den Bearbeitungsmodus wechseln
+        editMode = true;
+        const editSwitch = document.getElementById('editModeSwitch');
+        if (editSwitch) editSwitch.checked = true;
+
+        // Button-Zustände im Admin-Bereich aktualisieren
+        const editActions = document.getElementById('editActions');
+        if (editActions) editActions.style.display = 'flex';
+
+        // Teilnehmer-Hinzufügen Modal öffnen
+        const addBtn = document.getElementById('addParticipantBtn');
+        if (addBtn) addBtn.click();
+
+        const content = document.querySelector('.dropdown-content');
+        if (content) {
+            content.style.display = 'none';
+            setTimeout(() => content.style.display = '', 200);
+        }
+    };
 }
 
 activeSection.addEventListener('click', handleMainAction);
