@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Datenschutz - Race Timer</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        .page-section {
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            font-size: 1.4rem;
+        }
+
+        h3 {
+            color: var(--accent-blue);
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        p,
+        li {
+            color: var(--text-main);
+            margin-bottom: 0.8rem;
+            opacity: 0.9;
+        }
+
+        .li-a {
+            color: var(--accent-blue);
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+            margin-left: 1.5rem;
+
+        }
+
+        ul {
+            margin-left: 1.5rem;
+        }
+
+        ol.custom-alpha {
+            list-style-type: none;
+            counter-reset: item-counter;
+            /* Zähler initialisieren */
+            padding-left: 20px;
+        }
+
+        ol.custom-alpha>li {
+            counter-increment: item-counter;
+            /* Zähler hochzählen */
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        /* Das "a)" vor dem Inhalt einfügen */
+        ol.custom-alpha>li::before {
+            content: counter(item-counter, lower-alpha) ") ";
+            font-weight: bold;
+            position: absolute;
+            left: -25px;
+            /* Positionierung anpassen */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="landing-container">
+        <header class="landing-header">
+            <div class="glass-nav">
+                <img src="logo.png" alt="Logo" class="logo-small">
+                <a href="index.html" class="btn btn-outline small">Zurück zum Portal</a>
+            </div>
+            <div class="hero-section">
+                <h1 class="hero-title">Datenschutzerklärung</h1>
+                <p class="hero-subtitle">Informationen über die Verarbeitung Ihrer Daten</p>
+            </div>
+        </header>
+
+        <main class="landing-content">
+            <div class="card">
+                <section class="page-section">
+                    <h2>1. Verantwortlicher</h2>
+                    <p>Verantwortlich für die Datenverarbeitung auf dieser Webseite ist:</p>
+                    <p>
+                        [Name des Vereins/Unternehmens]<br>
+                        [Straße Hausnummer]<br>
+                        [PLZ Ort]<br>
+                        E-Mail: [E-Mail-Adresse]
+                    </p>
+                </section>
+
+                <section class="page-section">
+                    <h2>2. Erhebung und Speicherung personenbezogener Daten</h2>
+                    <ol class="custom-alpha">
+                        <li class="li-a">
+                            <h3>Beim Besuch der Webseite</h3>
+                            <p>Beim Aufrufen unserer Webseite werden durch den Browser auf Ihrem Endgerät automatisch
+                                Informationen an den Server unserer Webseite gesendet (u.a. IP-Adresse, Datum, Uhrzeit).
+                                Dies ist technisch erforderlich, um die Webseite stabil anzuzeigen.</p>
+                        </li>
+                        <li class="li-a">
+                            <h3>Bei der Anmeldung zum Rennen</h3>
+                            <p>Wenn Sie sich für ein Rennen anmelden, erheben wir folgende Daten:</p>
+                            <ul>
+                                <li>Vor- und Nachname</li>
+                                <li>Kategorie/Jahrgang (optional je nach Formular)</li>
+                                <li>Ggf. weitere Formularfelder wie Verein, Notfallkontakte etc.</li>
+                            </ul>
+                            <p><strong>Zweck:</strong> Diese Daten werden ausschließlich zur Organisation, Durchführung
+                                und Auswertung des sportlichen Wettbewerbs verarbeitet.</p>
+                            <p><strong>Rechtsgrundlage:</strong> Art. 6 Abs. 1 lit. b DSGVO (Erfüllung eines
+                                Vertrages/Teilnahmeverhältnis).</p>
+                        </li>
+                    </ol>
+                </section>
+
+                <section class="page-section">
+                    <h2>3. Veröffentlichung von Ergebnislisten</h2>
+                    <p>Im Rahmen unserer berechtigten Interessen (Art. 6 Abs. 1 lit. f DSGVO) und zur Dokumentation des
+                        sportlichen Ereignisses veröffentlichen wir Ergebnislisten (Name, Platzierung, Zeit). Diese sind
+                        für jedermann einsehbar.</p>
+                </section>
+
+                <section class="page-section">
+                    <h2>4. Speicherdauer</h2>
+                    <p>Die Daten werden so lange gespeichert, wie es für die Durchführung des Rennens und die
+                        Dokumentation der Ergebnisse erforderlich ist, bzw. so lange gesetzliche Aufbewahrungsfristen
+                        bestehen.</p>
+                </section>
+
+                <section class="page-section">
+                    <h2>5. Ihre Rechte</h2>
+                    <p>Sie haben das Recht auf:</p>
+                    <ul>
+                        <li>Auskunft über Ihre bei uns gespeicherten Daten (Art. 15 DSGVO)</li>
+                        <li>Berichtigung unrichtiger Daten (Art. 16 DSGVO)</li>
+                        <li>Löschung Ihrer Daten (Art. 17 DSGVO)</li>
+                        <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
+                        <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
+                        <li>Widerspruch gegen die Verarbeitung (Art. 21 DSGVO)</li>
+                    </ul>
+                    <p>Zur Ausübung dieser Rechte wenden Sie sich bitte an die oben genannte E-Mail-Adresse.</p>
+                </section>
+
+                <section class="page-section">
+                    <h2>6. Hosting</h2>
+                    <p>Diese Webseite wird auf [Eigenem Server / Name des Hosters einfügen] gehostet. Die
+                        Datenübertragung ist per SSL/TLS verschlüsselt.</p>
+                </section>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span id="appCopyright">© 2026 Jan Reiner</span>
+                <a href="impressum.html" style="color: inherit; text-decoration: none; opacity: 0.8;">Impressum</a>
+                <span id="appVersion">Version: --</span>
+            </div>
+        </footer>
+    </div>
+    <script src="footer-info.js"></script>
+</body>
+
+</html>
