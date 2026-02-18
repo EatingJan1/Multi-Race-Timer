@@ -35,10 +35,9 @@ auth_ns = api.namespace('auth', description='Authentication')
 
 
 DATA_DIR = 'data'
-TEMPLATE_DIR = os.path.join(DATA_DIR, 'templates')
 SIGNED_DIR = os.path.join(DATA_DIR, 'signed')
 
-for d in [DATA_DIR, TEMPLATE_DIR, SIGNED_DIR]:
+for d in [DATA_DIR, SIGNED_DIR]:
     if not os.path.exists(d):
         os.makedirs(d)
 
@@ -218,45 +217,6 @@ class RaceSettings(Resource):
         save_data(race_name, data)
         return data['settings'], 200
 
-@ns.route('/<string:race_name>/template')
-class RaceTemplate(Resource):
-    def get(self, race_name):
-        """Download registration PDF template"""
-        data = load_data(race_name)
-        template_file = data.get('registration_template')
-        if not template_file:
-            abort(404, "No template found")
-        
-        path = os.path.join(TEMPLATE_DIR, template_file)
-        if not os.path.exists(path):
-            abort(404, "Template file missing")
-            
-        return send_file(path, mimetype='application/pdf')
-
-    @login_required
-    def post(self, race_name):
-        """Upload registration PDF template"""
-        if 'file' not in request.files:
-            abort(400, "No file provided")
-        
-        file = request.files['file']
-        if file.filename == '':
-            abort(400, "Empty filename")
-            
-        if not file.filename.lower().endswith('.pdf'):
-            abort(400, "Only PDF allowed")
-
-        # Save with session-specific name to avoid conflicts
-        ext = '.pdf'
-        filename = f"{race_name}_template{ext}"
-        save_path = os.path.join(TEMPLATE_DIR, filename)
-        file.save(save_path)
-        
-        data = load_data(race_name)
-        data['registration_template'] = filename
-        save_data(race_name, data)
-        
-        return {'status': 'uploaded', 'filename': filename}, 200
 
 public_ns = api.namespace('public', description='Public operations')
 
@@ -269,20 +229,6 @@ class PublicInfo(Resource):
             'copyright': 'Jan Reiner'
         }
 
-@public_ns.route('/template/<string:race_name>')
-class PublicRaceTemplate(Resource):
-    def get(self, race_name):
-        """Download registration PDF template (Public)"""
-        data = load_data(race_name)
-        template_file = data.get('registration_template')
-        if not template_file:
-            abort(404, "No template found")
-        
-        path = os.path.join(TEMPLATE_DIR, template_file)
-        if not os.path.exists(path):
-            abort(404, "Template file missing")
-            
-        return send_file(path, mimetype='application/pdf')
 
 @public_ns.route('/races')
 class PublicRaceList(Resource):
