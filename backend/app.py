@@ -7,6 +7,7 @@ from flask_restx import Resource, Api, Namespace, fields
 from flask_cors import CORS
 import io
 import csv
+import subprocess
 
 app = Flask(__name__)
 # IMPORTANT: Set a secret key for session management!
@@ -25,10 +26,13 @@ def add_cors_headers(response):
 # Allow CORS with credentials (cookies)
 CORS(app, supports_credentials=True)
 
-api = Api(app, version='1.0', title='Multi-Race Timer API', description='API for tracking multiple race sessions')
+version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
+api = Api(app, version=version, title='Multi-Race Timer API', description='API for tracking multiple race sessions')
 
 ns = api.namespace('race', description='Race operations')
 auth_ns = api.namespace('auth', description='Authentication')
+
+
 
 DATA_DIR = 'data'
 TEMPLATE_DIR = os.path.join(DATA_DIR, 'templates')
@@ -57,6 +61,14 @@ def load_users():
             return json.load(f)
     except Exception:
         return {}
+
+def get_app_version():
+    try:
+        # Get the latest git tag
+        version = api.version
+        return version
+    except Exception:
+        return "v1.0.0"
 
 def login_required(f):
     @wraps(f)
@@ -247,6 +259,15 @@ class RaceTemplate(Resource):
         return {'status': 'uploaded', 'filename': filename}, 200
 
 public_ns = api.namespace('public', description='Public operations')
+
+@public_ns.route('/info')
+class PublicInfo(Resource):
+    def get(self):
+        """Get public application information (version, etc.)"""
+        return {
+            'version': get_app_version(),
+            'copyright': 'Jan Reiner'
+        }
 
 @public_ns.route('/template/<string:race_name>')
 class PublicRaceTemplate(Resource):

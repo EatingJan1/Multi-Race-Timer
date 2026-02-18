@@ -157,6 +157,7 @@ async function init() {
     }
 
     updateSettingsUI();
+    loadAppInfo();
     const isLoggedIn = await checkAuthStatus();
 
     if (isLoggedIn) {
@@ -204,6 +205,22 @@ async function fetchPublicRaces() {
         }
     } catch (e) {
         console.error("Public fetch failed", e);
+    }
+}
+
+async function loadAppInfo() {
+    try {
+        const res = await fetch(`${PUBLIC_BASE}/info`);
+        if (res.ok) {
+            const data = await res.json();
+            const versionEl = document.getElementById('appVersion');
+            const copyrightEl = document.getElementById('appCopyright');
+            if (versionEl) versionEl.textContent = `Version: ${data.version}`;
+            if (copyrightEl) copyrightEl.textContent = `© ${new Date().getFullYear()} ${data.copyright}`;
+            console.log(data);
+        }
+    } catch (e) {
+        console.error("Failed to load app info", e);
     }
 }
 
