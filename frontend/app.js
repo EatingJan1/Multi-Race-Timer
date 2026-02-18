@@ -136,6 +136,10 @@ const publicResultsBody = document.getElementById('publicResultsBody');
 const backToLandingResultsBtn = document.getElementById('backToLandingResultsBtn');
 
 async function init() {
+    // Check if we are on a page with the main application UI (index.html)
+    // If not, we stop here to avoid errors looking for non-existent elements.
+    if (!landingPage && !adminApp && !registrationPage) return;
+
     const params = new URLSearchParams(window.location.search);
     const kioskParam = params.get('k');
 
@@ -157,7 +161,6 @@ async function init() {
     }
 
     updateSettingsUI();
-    loadAppInfo();
     const isLoggedIn = await checkAuthStatus();
 
     if (isLoggedIn) {
@@ -208,21 +211,6 @@ async function fetchPublicRaces() {
     }
 }
 
-async function loadAppInfo() {
-    try {
-        const res = await fetch(`${PUBLIC_BASE}/info`);
-        if (res.ok) {
-            const data = await res.json();
-            const versionEl = document.getElementById('appVersion');
-            const copyrightEl = document.getElementById('appCopyright');
-            if (versionEl) versionEl.textContent = `Version: ${data.version}`;
-            if (copyrightEl) copyrightEl.textContent = `© ${new Date().getFullYear()} ${data.copyright}`;
-            console.log(data);
-        }
-    } catch (e) {
-        console.error("Failed to load app info", e);
-    }
-}
 
 function renderRaceGrid(races) {
     upcomingRacesList.innerHTML = '';
