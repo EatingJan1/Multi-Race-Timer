@@ -32,11 +32,6 @@
             font-size: 1.1rem;
         }
 
-        .placeholder {
-            color: var(--accent-blue);
-            font-style: italic;
-        }
-
         pre {
             white-space: pre-wrap;
             font-family: inherit;
@@ -78,93 +73,90 @@
             </div>
             <div class="hero-section">
                 <h1 class="hero-title">Impressum</h1>
-                <p class="hero-subtitle">Offenlegung gemäß § 5 ECG und § 25 Mediengesetz (Österreich)</p>
+                <p class="hero-subtitle">Pflichtangaben gemäß EU-Recht (Richtlinie 2000/31/EG, DSGVO Art. 13)</p>
             </div>
         </header>
 
         <main class="landing-content">
             <div class="card">
                 <div class="comment-hint">
-                    <strong>Hinweis:</strong> Bitte kommentieren Sie die für Sie nicht zutreffenden Varianten im
-                    Quellcode aus und füllen Sie die Platzhalter aus.
+                    <strong>Hinweis für Betreiber:</strong> Kommentieren Sie die nicht zutreffenden Varianten im
+                    Quellcode aus und füllen Sie alle Platzhalter aus.
                 </div>
 
                 <!-- ########################################## -->
-                <!-- VARIANTE 1: VEREIN (Standard für dieses Projekt) -->
+                <!-- VARIANTE A: VEREIN (Standard – aktiv)     -->
                 <!-- ########################################## -->
                 <div class="impressum-section" id="variant-verein">
                     <div class="variant-box">
-                        <h3>Variante A: Verein (ZVR-pflichtig)</h3>
+                        <h3>Variante A: Eingetragener Verein</h3>
                         <pre>
-<strong>Vereinsname:</strong> [Vollständiger Name laut Statuten]
-<strong>ZVR-Zahl:</strong> [ZVR-Nummer einfügen]
-<strong>Statutarische Sitze:</strong> [Ort der Hauptniederlassung]
+<strong>Name:</strong> [Vollständiger Vereinsname laut Satzung]
+<strong>Registernummer:</strong> [Vereinsregisternummer / ZVR-Zahl / VR-Nummer je nach Land]
+<strong>Sitz:</strong> [Ort der Hauptniederlassung, Land]
 
-<strong>Organschaftliche Vertreter:</strong>
-Obmann/Präsident: [Name]
-Schriftführer: [Name]
-Kassier: [Name]
+<strong>Vertretungsberechtigte Personen:</strong>
+Vorsitzende(r)/Präsident(in): [Name]
+Stellvertretung: [Name]
 
 <strong>Vereinszweck:</strong>
-[Kurze Beschreibung des Vereinszwecks, z.B.: Förderung des Laufsports]
+[Kurze Beschreibung, z.B.: Förderung des Laufsports und Breitensports]
 
-<strong>Kontaktdaten:</strong>
-Adresse: [Straße, PLZ, Ort]
+<strong>Kontakt:</strong>
+Adresse: [Straße, PLZ, Ort, Land]
 E-Mail: [E-Mail-Adresse]
 Telefon: [Optional]
 
-<strong>Aufsichtsbehörde:</strong> [Zuständige Landespolizeidirektion / Bezirkshauptmannschaft]
-<strong>Anwendbare Rechtsvorschriften:</strong> Vereinsgesetz 2002 (abrufbar unter www.ris.bka.gv.at)
+<strong>Zuständige Aufsichtsbehörde:</strong> [Zuständige Behörde gemäß nationalem Vereinsrecht]
+<strong>Anwendbares Recht:</strong> [Nationales Vereinsgesetz, z.B. Vereinsgesetz 2002 (AT) / BGB §§ 21 ff. (DE)]
                         </pre>
                     </div>
                 </div>
 
                 <!-- ########################################## -->
-                <!-- VARIANTE 2: UNTERNEHMEN / GEWERBE -->
+                <!-- VARIANTE B: UNTERNEHMEN (auskommentiert) -->
                 <!-- ########################################## -->
                 <!--
                 <div class="impressum-section" id="variant-firma">
                     <div class="variant-box">
-                        <h3>Variante B: Unternehmen / Einzelunternehmer</h3>
+                        <h3>Variante B: Unternehmen / Gewerbetreibender</h3>
                         <pre>
-<strong>Firmenname:</strong> [Vollständiger Name / Firmenwortlaut]
-<strong>Unternehmensgegenstand:</strong> [z.B. IT-Dienstleistungen]
+<strong>Firmenname:</strong> [Vollständiger Firmenwortlaut]
+<strong>Unternehmensgegenstand:</strong> [z.B. IT-Dienstleistungen, Sportveranstaltungen]
+<strong>Rechtsform:</strong> [z.B. GmbH, UG, Einzelunternehmen, SRL, SARL]
 
-<strong>Firmenbuchnummer:</strong> [Falls vorhanden, sonst leer lassen]
-<strong>Firmenbuchgericht:</strong> [Zuständiges Gericht]
-<strong>UID-Nummer:</strong> [ATU-Nummer einfügen]
+<strong>Handelsregisternummer:</strong> [Falls vorhanden]
+<strong>Handelsregistergericht:</strong> [Zuständiges Gericht / Behörde]
+<strong>USt-IdNr. (EU):</strong> [EU-weit gültige Umsatzsteuer-Identifikationsnummer, z.B. DE123456789 / ATU12345678]
 
-<strong>Kontaktdaten:</strong>
-Adresse: [Straße, PLZ, Ort]
+<strong>Vertretungsberechtigte Person:</strong> [Geschäftsführer(in) / Inhaber(in)]
+
+<strong>Kontakt:</strong>
+Adresse: [Straße, PLZ, Ort, Land]
 E-Mail: [E-Mail-Adresse]
 Telefon: [Optional]
 
-<strong>Mitgliedschaften bei der Wirtschaftskammerorganisation:</strong>
-Mitglied der WKÖ, WKO [Bundesland], Fachgruppe [z.B. UBIT]
-
-<strong>Aufsichtsbehörde/Gewerbebehörde:</strong> [Zuständige BH oder Magistrat]
-<strong>Berufsbezeichnung:</strong> [z.B. Softwareentwickler]
-<strong>Verleihungsstaat:</strong> Österreich
-
-<strong>Anwendbare Rechtsvorschriften:</strong> Gewerbeordnung (GewO), abrufbar unter www.ris.bka.gv.at
+<strong>Zuständige Aufsichtsbehörde:</strong> [Zuständige Gewerbebehörde / Kammer]
+<strong>Berufsbezeichnung:</strong> [z.B. Softwareentwickler, Veranstaltungsorganisator]
+<strong>Verleihungsstaat:</strong> [z.B. Deutschland, Österreich, Frankreich]
                         </pre>
                     </div>
                 </div>
                 -->
 
                 <!-- ########################################## -->
-                <!-- VARIANTE 3: PRIVATPERSON -->
+                <!-- VARIANTE C: PRIVATPERSON (auskommentiert) -->
                 <!-- ########################################## -->
                 <!--
                 <div class="impressum-section" id="variant-privat">
                     <div class="variant-box">
-                        <h3>Variante C: Privatperson (Persönlicher Blog/Tool)</h3>
+                        <h3>Variante C: Privatperson</h3>
                         <pre>
-<strong>Medieninhaber:</strong> [Vollständiger Vor- und Nachname]
-<strong>Wohnort:</strong> [Ort, PLZ]
+<strong>Medieninhaber / Verantwortliche Person:</strong> [Vollständiger Vor- und Nachname]
+<strong>Wohnort:</strong> [PLZ, Ort, Land]
 
 <strong>Grundlegende Richtung des Mediums:</strong>
-Diese Webseite stellt ein Tool zur Zeitmessung bei Sportveranstaltungen zur Verfügung und dient der Information über lokale Rennen.
+Dieses Tool dient der Zeitmessung bei Sportveranstaltungen und der Information über lokale Rennergebnisse. Es wird ohne kommerzielle Absicht betrieben.
 
 <strong>Kontakt:</strong>
 E-Mail: [E-Mail-Adresse]
@@ -174,31 +166,33 @@ E-Mail: [E-Mail-Adresse]
                 -->
 
                 <div class="impressum-section">
-                    <h3>Lizenz</h3>
-                    <p>Diese Software steht unter der <strong>MIT-Lizenz</strong>. Das Vollständige Projekt kann auf
+                    <h3>Lizenz & Quellcode</h3>
+                    <p>Diese Software steht unter der <strong>MIT-Lizenz</strong>. Das vollständige Projekt ist auf
                         <a href="https://github.com/EatingJan1/Multi-Race-Timer" class="git-link">GitHub</a>
-                        eingesehen werden.
+                        einsehbar.
                     </p>
                     <p>© 2026 Jan Reiner</p>
                 </div>
 
                 <div class="impressum-section">
                     <h3>Haftungsausschluss</h3>
-                    <p>Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer
+                    <p>Wir übernehmen keine Haftung für die Inhalte externer
                         Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.
                     </p>
+                    <p>Gemäß Art. 14 der EU-Richtlinie 2000/31/EG (E-Commerce-Richtlinie) sind Diensteanbieter nicht
+                        verpflichtet, die von ihnen übermittelten oder gespeicherten Informationen zu überwachen.</p>
                 </div>
             </div>
         </main>
-    </div>
-    <footer class="app-footer">
-        <div class="footer-content">
-            <span id="appCopyright">© 2026 Jan Reiner</span>
-            <a href="datenschutz.html" style="color: inherit; text-decoration: none; opacity: 0.8;">Datenschutz</a>
-            <span id="appVersion">Version: --</span>
-        </div>
-    </footer>
 
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span id="appCopyright">© 2026 Jan Reiner</span>
+                <a href="datenschutz.html" style="color: inherit; text-decoration: none; opacity: 0.8;">Datenschutz</a>
+                <span id="appVersion">Version: --</span>
+            </div>
+        </footer>
+    </div>
     <script src="footer-info.js"></script>
 </body>
 
