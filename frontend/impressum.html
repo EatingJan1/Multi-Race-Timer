@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impressum - Race Timer</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap" rel="stylesheet">
+    <style>
+        .impressum-section {
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .impressum-section:last-child {
+            border-bottom: none;
+        }
+
+        .variant-box {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            border: 1px dashed var(--glass-border);
+        }
+
+        .variant-box h3 {
+            margin-bottom: 1rem;
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .placeholder {
+            color: var(--accent-blue);
+            font-style: italic;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            font-family: inherit;
+            color: var(--text-main);
+        }
+
+        .comment-hint {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffc107;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            border-left: 4px solid #ffc107;
+        }
+
+        .git-link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .git-link:hover {
+            color: var(--primary);
+            text-decoration: underline;
+            text-shadow: 0 0 10px var(--primary);
+            cursor: cell;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="landing-container">
+        <header class="landing-header">
+            <div class="glass-nav">
+                <img src="logo.png" alt="Logo" class="logo-small">
+                <a href="index.html" class="btn btn-outline small">Zurück zum Portal</a>
+            </div>
+            <div class="hero-section">
+                <h1 class="hero-title">Impressum</h1>
+                <p class="hero-subtitle">Offenlegung gemäß § 5 ECG und § 25 Mediengesetz (Österreich)</p>
+            </div>
+        </header>
+
+        <main class="landing-content">
+            <div class="card">
+                <div class="comment-hint">
+                    <strong>Hinweis:</strong> Bitte kommentieren Sie die für Sie nicht zutreffenden Varianten im
+                    Quellcode aus und füllen Sie die Platzhalter aus.
+                </div>
+
+                <!-- ########################################## -->
+                <!-- VARIANTE 1: VEREIN (Standard für dieses Projekt) -->
+                <!-- ########################################## -->
+                <div class="impressum-section" id="variant-verein">
+                    <div class="variant-box">
+                        <h3>Variante A: Verein (ZVR-pflichtig)</h3>
+                        <pre>
+<strong>Vereinsname:</strong> [Vollständiger Name laut Statuten]
+<strong>ZVR-Zahl:</strong> [ZVR-Nummer einfügen]
+<strong>Statutarische Sitze:</strong> [Ort der Hauptniederlassung]
+
+<strong>Organschaftliche Vertreter:</strong>
+Obmann/Präsident: [Name]
+Schriftführer: [Name]
+Kassier: [Name]
+
+<strong>Vereinszweck:</strong>
+[Kurze Beschreibung des Vereinszwecks, z.B.: Förderung des Laufsports]
+
+<strong>Kontaktdaten:</strong>
+Adresse: [Straße, PLZ, Ort]
+E-Mail: [E-Mail-Adresse]
+Telefon: [Optional]
+
+<strong>Aufsichtsbehörde:</strong> [Zuständige Landespolizeidirektion / Bezirkshauptmannschaft]
+<strong>Anwendbare Rechtsvorschriften:</strong> Vereinsgesetz 2002 (abrufbar unter www.ris.bka.gv.at)
+                        </pre>
+                    </div>
+                </div>
+
+                <!-- ########################################## -->
+                <!-- VARIANTE 2: UNTERNEHMEN / GEWERBE -->
+                <!-- ########################################## -->
+                <!--
+                <div class="impressum-section" id="variant-firma">
+                    <div class="variant-box">
+                        <h3>Variante B: Unternehmen / Einzelunternehmer</h3>
+                        <pre>
+<strong>Firmenname:</strong> [Vollständiger Name / Firmenwortlaut]
+<strong>Unternehmensgegenstand:</strong> [z.B. IT-Dienstleistungen]
+
+<strong>Firmenbuchnummer:</strong> [Falls vorhanden, sonst leer lassen]
+<strong>Firmenbuchgericht:</strong> [Zuständiges Gericht]
+<strong>UID-Nummer:</strong> [ATU-Nummer einfügen]
+
+<strong>Kontaktdaten:</strong>
+Adresse: [Straße, PLZ, Ort]
+E-Mail: [E-Mail-Adresse]
+Telefon: [Optional]
+
+<strong>Mitgliedschaften bei der Wirtschaftskammerorganisation:</strong>
+Mitglied der WKÖ, WKO [Bundesland], Fachgruppe [z.B. UBIT]
+
+<strong>Aufsichtsbehörde/Gewerbebehörde:</strong> [Zuständige BH oder Magistrat]
+<strong>Berufsbezeichnung:</strong> [z.B. Softwareentwickler]
+<strong>Verleihungsstaat:</strong> Österreich
+
+<strong>Anwendbare Rechtsvorschriften:</strong> Gewerbeordnung (GewO), abrufbar unter www.ris.bka.gv.at
+                        </pre>
+                    </div>
+                </div>
+                -->
+
+                <!-- ########################################## -->
+                <!-- VARIANTE 3: PRIVATPERSON -->
+                <!-- ########################################## -->
+                <!--
+                <div class="impressum-section" id="variant-privat">
+                    <div class="variant-box">
+                        <h3>Variante C: Privatperson (Persönlicher Blog/Tool)</h3>
+                        <pre>
+<strong>Medieninhaber:</strong> [Vollständiger Vor- und Nachname]
+<strong>Wohnort:</strong> [Ort, PLZ]
+
+<strong>Grundlegende Richtung des Mediums:</strong>
+Diese Webseite stellt ein Tool zur Zeitmessung bei Sportveranstaltungen zur Verfügung und dient der Information über lokale Rennen.
+
+<strong>Kontakt:</strong>
+E-Mail: [E-Mail-Adresse]
+                        </pre>
+                    </div>
+                </div>
+                -->
+
+                <div class="impressum-section">
+                    <h3>Lizenz</h3>
+                    <p>Diese Software steht unter der <strong>MIT-Lizenz</strong>. Das Vollständige Projekt kann auf
+                        <a href="https://github.com/EatingJan1/Multi-Race-Timer" class="git-link">GitHub</a>
+                        eingesehen werden.
+                    </p>
+                    <p>© 2026 Jan Reiner</p>
+                </div>
+
+                <div class="impressum-section">
+                    <h3>Haftungsausschluss</h3>
+                    <p>Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer
+                        Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.
+                    </p>
+                </div>
+            </div>
+        </main>
+
+        <footer class="app-footer">
+            <div class="footer-content">
+                <span id="appCopyright">© 2026 Jan Reiner</span>
+                <span id="appVersion">Version: --</span>
+            </div>
+        </footer>
+    </div>
+    <script src="footer-info.js"></script>
+</body>
+
+</html>
