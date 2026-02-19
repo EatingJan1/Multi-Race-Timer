@@ -943,502 +943,6 @@ input:checked+.switch-slider:before {
 
 .columnConfig {}
 
-/* Mobile styles */
-@media (max-width: 768px) {
-    body {
-        padding: 0.5rem;
-        padding-top: env(safe-area-inset-top);
-        padding-bottom: env(safe-area-inset-bottom);
-    }
-
-    h1 {
-        font-size: 1.75rem;
-        margin-top: 0.5rem;
-    }
-
-    /* Force show desktop-only elements, but style them for mobile grid */
-    .desktop-only {
-        display: block !important;
-    }
-
-    /* Mobile Header & Control Bar - Stacked & Scrollable */
-    .control-bar {
-        flex-direction: column;
-        gap: 0.75rem;
-        padding: 1rem;
-        border-radius: 16px;
-        margin-bottom: 1.5rem;
-    }
-
-    .control-group-left,
-    .control-group-right {
-        display: flex !important;
-        flex-direction: column !important;
-        width: 100%;
-        gap: 0.75rem;
-        align-items: stretch !important;
-    }
-
-    .session-select,
-    #tagFilter {
-        width: 100%;
-        height: 48px;
-        /* Touch friendly */
-        font-size: 1rem;
-    }
-
-    .action-buttons {
-        display: grid !important;
-        grid-template-columns: 1fr 1fr;
-        gap: 0.75rem;
-        width: 100%;
-    }
-
-    .action-buttons .btn-icon {
-        width: 100% !important;
-        height: 48px;
-        justify-content: center;
-    }
-
-    .divider {
-        display: none;
-    }
-
-    /* Import & Settings Row */
-    .control-group-right {
-        flex-direction: row !important;
-        /* Keep buttons side-by-side */
-        justify-content: space-between;
-        margin-top: 0.5rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.1);
-        padding-top: 1rem;
-    }
-
-    .import-section {
-        flex-grow: 1;
-        margin-right: 0.75rem;
-    }
-
-    .import-btn {
-        width: 100%;
-        height: 48px;
-        justify-content: center;
-    }
-
-    #settingsBtn {
-        height: 48px;
-        width: 48px !important;
-        flex-shrink: 0;
-    }
-
-    /* Active Person Card - Sticky & Prominent */
-    .active-person-card {
-        top: 0.5rem;
-        margin: 0 -0.5rem 1.5rem -0.5rem;
-        /* Full width feel */
-        border-radius: 16px;
-        padding: 1rem;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
-    }
-
-    .timer-display {
-        font-size: 3.5rem;
-        line-height: 1;
-        margin: 0.5rem 0;
-    }
-
-    .person-name {
-        font-size: 1.25rem;
-    }
-
-    .btn-start {
-        height: 60px;
-        font-size: 1.1rem;
-        letter-spacing: 0.5px;
-        font-weight: 800;
-    }
-
-    /* Card-Based List Layout for Mobile */
-    #raceTable thead {
-        display: none;
-    }
-
-    #raceTable,
-    #raceTable tbody,
-    #raceTable tr,
-    #raceTable td {
-        display: block;
-        width: 100%;
-    }
-
-    #raceTable tr {
-        margin-bottom: 1rem;
-        background: rgba(255, 255, 255, 0.03);
-        border: 1px solid var(--card-border);
-        border-radius: 16px;
-        position: relative;
-        /* For absolute positioning of some elements if needed */
-        display: grid;
-        /* Custom Grid Layout for Mobile Card */
-        /* Columns: [Left: Status/Action] [Middle: Info] [Right: Times/Rank] */
-        grid-template-columns: 1fr 1fr;
-        grid-template-areas:
-            "number name"
-            "status rank"
-            "times times"
-            "actions actions";
-        gap: 0.5rem;
-        padding: 1rem;
-    }
-
-    #raceTable td {
-        padding: 0;
-        background: transparent !important;
-        border: none !important;
-    }
-
-    /* Map Data to Grid Areas */
-    #raceTable td[data-label="Startnr."] {
-        grid-area: number;
-        font-size: 1.1rem;
-        font-weight: 900;
-        color: var(--primary);
-    }
-
-    #raceTable td[data-label="Name"] {
-        grid-area: name;
-        font-size: 1.1rem;
-        font-weight: 600;
-        text-align: right;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-    }
-
-    /* Move tags to be under name in flex flow if needed, or inline */
-    .tag-badges {
-        justify-content: flex-end;
-    }
-
-    #raceTable td[data-label="Status"] {
-        grid-area: status;
-        padding-top: 0.25rem;
-    }
-
-    #raceTable td[data-label="Platz"] {
-        grid-area: rank;
-        text-align: right;
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--text-main);
-    }
-
-    /* Combine Times into one block area */
-    #raceTable td[data-label="Startzeit"],
-    #raceTable td[data-label="Endzeit"],
-    #raceTable td[data-label="Dauer"],
-    #raceTable td[data-label="Rückstand"] {
-        /* We can't merge cells in CSS grid easily without extra markup, 
-           so we let them flow or assign specific spots. 
-           Let's create a 'Times' row feel. */
-        font-size: 0.85rem;
-        color: var(--text-muted);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-        padding-top: 0.5rem !important;
-        margin-top: 0.25rem;
-    }
-
-    #raceTable td[data-label="Startzeit"] {
-        grid-area: times;
-        grid-row: 3;
-        margin-bottom: 2.5rem;
-    }
-
-    /* Hack: Stack them visually by changing grid rows dynamically or just dump them in one column? 
-       Actually, let's simplify. 
-       Let's put Times in a 2-column sub-grid details view.
-    */
-
-    /* Re-think Grid for Times */
-    #raceTable td[data-label="Startzeit"] {
-        grid-column: 1;
-        grid-row: 3;
-        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-        padding-top: 0.5rem !important;
-    }
-
-    #raceTable td[data-label="Endzeit"] {
-        grid-column: 1;
-        grid-row: 4;
-    }
-
-    #raceTable td[data-label="Dauer"] {
-        grid-column: 2;
-        grid-row: 3;
-        text-align: right;
-        justify-content: flex-end;
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--text-main);
-        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-        padding-top: 0.5rem !important;
-    }
-
-    #raceTable td[data-label="Rückstand"] {
-        grid-column: 2;
-        grid-row: 4;
-        text-align: right;
-        justify-content: flex-end;
-    }
-
-    /* Actions Row */
-    #raceTable td[data-label="Aktionen"] {
-        grid-column: 1 / -1;
-        grid-row: 5;
-        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-        padding-top: 0.75rem !important;
-        margin-top: 0.5rem;
-        display: flex;
-        justify-content: flex-end;
-        gap: 1rem;
-    }
-
-    /* Labels for data fields to make them understandable */
-    #raceTable td[data-label="Startzeit"]::before {
-        content: "Start:";
-        margin-right: 0.5rem;
-        opacity: 0.6;
-    }
-
-    #raceTable td[data-label="Endzeit"]::before {
-        content: "Ende:";
-        margin-right: 0.5rem;
-        opacity: 0.6;
-    }
-
-    #raceTable td[data-label="Dauer"]::before {
-        content: "Dauer:";
-        margin-right: 0.5rem;
-        opacity: 0.6;
-        font-weight: 400;
-        font-size: 0.8rem;
-    }
-
-    /* Hide unneeded labels */
-    #raceTable td[data-label="Startnr."]::before,
-    #raceTable td[data-label="Name"]::before,
-    #raceTable td[data-label="Platz"]::before,
-    #raceTable td[data-label="Status"]::before,
-    #raceTable td[data-label="Rückstand"]::before,
-    #raceTable td[data-label="Aktionen"]::before {
-        display: none;
-    }
-
-    /* Safe Area for bottom scrolling */
-    .table-container {
-        padding-bottom: 3rem;
-    }
-
-
-    .columnConfig {
-        display: none;
-    }
-
-    .footer-content {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-        padding: 1.5rem 1rem;
-    }
-
-
-}
-
-@keyframes fadeInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes pulse {
-    0% {
-        opacity: 1;
-    }
-
-    50% {
-        opacity: 0.7;
-    }
-
-    100% {
-        opacity: 1;
-    }
-}
-
-/* --- NEW EXPORT & PRINT LOGIC --- */
-
-/* PRINT VIEW RESET (Non-Print Mode) */
-.print-only {
-    display: none !important;
-}
-
-@media print {
-
-    /* Set page to landscape */
-    @page {
-        size: landscape;
-        margin: 0;
-    }
-
-    *,
-    *::before,
-    *::after {
-        box-sizing: border-box !important;
-    }
-
-    body {
-        background: white !important;
-        color: black !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-    }
-
-    .print-only {
-        display: block !important;
-        width: 100% !important;
-        visibility: visible !important;
-        padding: 1.5cm !important;
-    }
-
-    /* Hide UI Elements */
-    .container,
-    .modal,
-    .card,
-    #activeSection,
-    .control-bar,
-    header,
-    svg,
-    .no-print {
-        display: none !important;
-    }
-
-    /* Professional Print Header */
-    .print-header {
-        display: flex !important;
-        justify-content: flex-start !important;
-        align-items: center !important;
-        border-bottom: 3px solid #000 !important;
-        padding-bottom: 15px !important;
-        margin-bottom: 25px !important;
-    }
-
-    #printLogo {
-        max-height: 150px !important;
-        max-width: 150px !important;
-        object-fit: contain !important;
-        margin-right: 20px !important;
-    }
-
-    .print-titles {
-        text-align: left !important;
-    }
-
-    .print-titles h1 {
-        margin: 0 !important;
-        font-size: 28pt !important;
-        color: #000 !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1px !important;
-        background: none !important;
-        -webkit-text-fill-color: initial !important;
-        background-clip: unset !important;
-    }
-
-    .print-titles p {
-        margin: 5px 0 0 0 !important;
-        font-size: 14pt !important;
-        color: #444 !important;
-        font-weight: 600 !important;
-    }
-
-    /* Professional Print Table */
-    table#printTable {
-        width: 99% !important;
-        /* Slightly smaller to prevent edge clipping */
-        border-collapse: collapse !important;
-        border: 1px solid #000 !important;
-        margin: 0 auto !important;
-        table-layout: auto !important;
-        font-family: 'Outfit', sans-serif !important;
-    }
-
-    table#printTable th,
-    table#printTable td {
-        border: 1px solid #000 !important;
-        padding: 12px 10px !important;
-    }
-
-    /* Force the left-most border to be visible */
-    table#printTable th:first-child,
-    table#printTable td:first-child {
-        border-left: 2px solid #000 !important;
-    }
-
-    table#printTable th {
-        background-color: #f2f2f2 !important;
-        color: black !important;
-        text-align: left !important;
-        font-weight: 800 !important;
-        font-size: 11pt !important;
-        text-transform: uppercase !important;
-    }
-
-    table#printTable td {
-        /* Pure black for visibility */
-        font-size: 11pt !important;
-        color: black !important;
-    }
-
-    /* Zebra Striping for better readability in landscape */
-    table#printTable tr:nth-child(even) td {
-        background-color: #fafafa !important;
-    }
-
-    /* Highlighting certain columns */
-    table#printTable td:first-child {
-        font-weight: 900 !important;
-        font-size: 13pt !important;
-        width: 50px !important;
-    }
-
-    table#printTable td:nth-child(2) {
-        font-weight: 600 !important;
-    }
-
-    /* Duration and Gap emphasizing */
-    table#printTable td:nth-child(6),
-    table#printTable td:nth-child(7) {
-        font-family: monospace !important;
-        font-weight: 800 !important;
-        text-align: right !important;
-    }
-
-    .settings-section {
-        display: none;
-    }
-}
-
-
 
 
 .landing-header {
@@ -1780,9 +1284,11 @@ input:checked+.switch-slider:before {
 }
 
 .footer-content {
+
     display: flex;
     gap: 2rem;
     align-items: center;
+    flex-direction: row;
 }
 
 #appVersion {
@@ -1850,4 +1356,503 @@ input:checked+.switch-slider:before {
 
 .dropdown-content a:hover {
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile styles */
+@media (max-width: 768px) {
+    body {
+        padding: 0.5rem;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    h1 {
+        font-size: 1.75rem;
+        margin-top: 0.5rem;
+    }
+
+    /* Force show desktop-only elements, but style them for mobile grid */
+    .desktop-only {
+        display: block !important;
+    }
+
+    /* Mobile Header & Control Bar - Stacked & Scrollable */
+    .control-bar {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+    }
+
+    .control-group-left,
+    .control-group-right {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100%;
+        gap: 0.75rem;
+        align-items: stretch !important;
+    }
+
+    .session-select,
+    #tagFilter {
+        width: 100%;
+        height: 48px;
+        /* Touch friendly */
+        font-size: 1rem;
+    }
+
+    .action-buttons {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .action-buttons .btn-icon {
+        width: 100% !important;
+        height: 48px;
+        justify-content: center;
+    }
+
+    .divider {
+        display: none;
+    }
+
+    /* Import & Settings Row */
+    .control-group-right {
+        flex-direction: row !important;
+        /* Keep buttons side-by-side */
+        justify-content: space-between;
+        margin-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 1rem;
+    }
+
+    .import-section {
+        flex-grow: 1;
+        margin-right: 0.75rem;
+    }
+
+    .import-btn {
+        width: 100%;
+        height: 48px;
+        justify-content: center;
+    }
+
+    #settingsBtn {
+        height: 48px;
+        width: 48px !important;
+        flex-shrink: 0;
+    }
+
+    /* Active Person Card - Sticky & Prominent */
+    .active-person-card {
+        top: 0.5rem;
+        margin: 0 -0.5rem 1.5rem -0.5rem;
+        /* Full width feel */
+        border-radius: 16px;
+        padding: 1rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+    }
+
+    .timer-display {
+        font-size: 3.5rem;
+        line-height: 1;
+        margin: 0.5rem 0;
+    }
+
+    .person-name {
+        font-size: 1.25rem;
+    }
+
+    .btn-start {
+        height: 60px;
+        font-size: 1.1rem;
+        letter-spacing: 0.5px;
+        font-weight: 800;
+    }
+
+    /* Card-Based List Layout for Mobile */
+    #raceTable thead {
+        display: none;
+    }
+
+    #raceTable,
+    #raceTable tbody,
+    #raceTable tr,
+    #raceTable td {
+        display: block;
+        width: 100%;
+    }
+
+    #raceTable tr {
+        margin-bottom: 1rem;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid var(--card-border);
+        border-radius: 16px;
+        position: relative;
+        /* For absolute positioning of some elements if needed */
+        display: grid;
+        /* Custom Grid Layout for Mobile Card */
+        /* Columns: [Left: Status/Action] [Middle: Info] [Right: Times/Rank] */
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas:
+            "number name"
+            "status rank"
+            "times times"
+            "actions actions";
+        gap: 0.5rem;
+        padding: 1rem;
+    }
+
+    #raceTable td {
+        padding: 0;
+        background: transparent !important;
+        border: none !important;
+    }
+
+    /* Map Data to Grid Areas */
+    #raceTable td[data-label="Startnr."] {
+        grid-area: number;
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: var(--primary);
+    }
+
+    #raceTable td[data-label="Name"] {
+        grid-area: name;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-align: right;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    /* Move tags to be under name in flex flow if needed, or inline */
+    .tag-badges {
+        justify-content: flex-end;
+    }
+
+    #raceTable td[data-label="Status"] {
+        grid-area: status;
+        padding-top: 0.25rem;
+    }
+
+    #raceTable td[data-label="Platz"] {
+        grid-area: rank;
+        text-align: right;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text-main);
+    }
+
+    /* Combine Times into one block area */
+    #raceTable td[data-label="Startzeit"],
+    #raceTable td[data-label="Endzeit"],
+    #raceTable td[data-label="Dauer"],
+    #raceTable td[data-label="Rückstand"] {
+        /* We can't merge cells in CSS grid easily without extra markup, 
+           so we let them flow or assign specific spots. 
+           Let's create a 'Times' row feel. */
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding-top: 0.5rem !important;
+        margin-top: 0.25rem;
+    }
+
+    #raceTable td[data-label="Startzeit"] {
+        grid-area: times;
+        grid-row: 3;
+        margin-bottom: 2.5rem;
+    }
+
+    /* Hack: Stack them visually by changing grid rows dynamically or just dump them in one column? 
+       Actually, let's simplify. 
+       Let's put Times in a 2-column sub-grid details view.
+    */
+
+    /* Re-think Grid for Times */
+    #raceTable td[data-label="Startzeit"] {
+        grid-column: 1;
+        grid-row: 3;
+        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding-top: 0.5rem !important;
+    }
+
+    #raceTable td[data-label="Endzeit"] {
+        grid-column: 1;
+        grid-row: 4;
+    }
+
+    #raceTable td[data-label="Dauer"] {
+        grid-column: 2;
+        grid-row: 3;
+        text-align: right;
+        justify-content: flex-end;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding-top: 0.5rem !important;
+    }
+
+    #raceTable td[data-label="Rückstand"] {
+        grid-column: 2;
+        grid-row: 4;
+        text-align: right;
+        justify-content: flex-end;
+    }
+
+    /* Actions Row */
+    #raceTable td[data-label="Aktionen"] {
+        grid-column: 1 / -1;
+        grid-row: 5;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding-top: 0.75rem !important;
+        margin-top: 0.5rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    /* Labels for data fields to make them understandable */
+    #raceTable td[data-label="Startzeit"]::before {
+        content: "Start:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
+    }
+
+    #raceTable td[data-label="Endzeit"]::before {
+        content: "Ende:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
+    }
+
+    #raceTable td[data-label="Dauer"]::before {
+        content: "Dauer:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
+        font-weight: 400;
+        font-size: 0.8rem;
+    }
+
+    /* Hide unneeded labels */
+    #raceTable td[data-label="Startnr."]::before,
+    #raceTable td[data-label="Name"]::before,
+    #raceTable td[data-label="Platz"]::before,
+    #raceTable td[data-label="Status"]::before,
+    #raceTable td[data-label="Rückstand"]::before,
+    #raceTable td[data-label="Aktionen"]::before {
+        display: none;
+    }
+
+    /* Safe Area for bottom scrolling */
+    .table-container {
+        padding-bottom: 3rem;
+    }
+
+
+    .columnConfig {
+        display: none;
+    }
+
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+
+        gap: 0.75rem 1rem;
+        text-align: center;
+        padding: 1.5rem;
+    }
+
+
+}
+
+
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+/* --- NEW EXPORT & PRINT LOGIC --- */
+
+/* PRINT VIEW RESET (Non-Print Mode) */
+.print-only {
+    display: none !important;
+}
+
+@media print {
+
+    /* Set page to landscape */
+    @page {
+        size: landscape;
+        margin: 0;
+    }
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .print-only {
+        display: block !important;
+        width: 100% !important;
+        visibility: visible !important;
+        padding: 1.5cm !important;
+    }
+
+    /* Hide UI Elements */
+    .container,
+    .modal,
+    .card,
+    #activeSection,
+    .control-bar,
+    header,
+    svg,
+    .no-print {
+        display: none !important;
+    }
+
+    /* Professional Print Header */
+    .print-header {
+        display: flex !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        border-bottom: 3px solid #000 !important;
+        padding-bottom: 15px !important;
+        margin-bottom: 25px !important;
+    }
+
+    #printLogo {
+        max-height: 150px !important;
+        max-width: 150px !important;
+        object-fit: contain !important;
+        margin-right: 20px !important;
+    }
+
+    .print-titles {
+        text-align: left !important;
+    }
+
+    .print-titles h1 {
+        margin: 0 !important;
+        font-size: 28pt !important;
+        color: #000 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        background: none !important;
+        -webkit-text-fill-color: initial !important;
+        background-clip: unset !important;
+    }
+
+    .print-titles p {
+        margin: 5px 0 0 0 !important;
+        font-size: 14pt !important;
+        color: #444 !important;
+        font-weight: 600 !important;
+    }
+
+    /* Professional Print Table */
+    table#printTable {
+        width: 99% !important;
+        /* Slightly smaller to prevent edge clipping */
+        border-collapse: collapse !important;
+        border: 1px solid #000 !important;
+        margin: 0 auto !important;
+        table-layout: auto !important;
+        font-family: 'Outfit', sans-serif !important;
+    }
+
+    table#printTable th,
+    table#printTable td {
+        border: 1px solid #000 !important;
+        padding: 12px 10px !important;
+    }
+
+    /* Force the left-most border to be visible */
+    table#printTable th:first-child,
+    table#printTable td:first-child {
+        border-left: 2px solid #000 !important;
+    }
+
+    table#printTable th {
+        background-color: #f2f2f2 !important;
+        color: black !important;
+        text-align: left !important;
+        font-weight: 800 !important;
+        font-size: 11pt !important;
+        text-transform: uppercase !important;
+    }
+
+    table#printTable td {
+        /* Pure black for visibility */
+        font-size: 11pt !important;
+        color: black !important;
+    }
+
+    /* Zebra Striping for better readability in landscape */
+    table#printTable tr:nth-child(even) td {
+        background-color: #fafafa !important;
+    }
+
+    /* Highlighting certain columns */
+    table#printTable td:first-child {
+        font-weight: 900 !important;
+        font-size: 13pt !important;
+        width: 50px !important;
+    }
+
+    table#printTable td:nth-child(2) {
+        font-weight: 600 !important;
+    }
+
+    /* Duration and Gap emphasizing */
+    table#printTable td:nth-child(6),
+    table#printTable td:nth-child(7) {
+        font-family: monospace !important;
+        font-weight: 800 !important;
+        text-align: right !important;
+    }
+
+    .settings-section {
+        display: none;
+    }
 }
