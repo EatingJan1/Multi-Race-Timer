@@ -31,7 +31,7 @@ body {
     color: var(--text-main);
     font-family: 'Outfit', sans-serif;
     line-height: 1.6;
-    padding: 2rem;
+    padding: 1rem;
     min-height: 100vh;
 }
 
@@ -946,7 +946,7 @@ input:checked+.switch-slider:before {
 /* Mobile styles */
 @media (max-width: 768px) {
     body {
-        padding: 1rem;
+        padding: 0.5rem;
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
     }
@@ -1442,7 +1442,7 @@ input:checked+.switch-slider:before {
 
 
 .landing-header {
-    padding: 2rem;
+    padding: 0.2rem;
     text-align: center;
 }
 
