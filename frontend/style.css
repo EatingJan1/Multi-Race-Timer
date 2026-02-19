@@ -941,6 +941,8 @@ input:checked+.switch-slider:before {
     box-shadow: inset 1px 1px 0 rgba(69, 168, 243, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.6);
 }
 
+.columnConfig {}
+
 /* Mobile styles */
 @media (max-width: 768px) {
     body {
@@ -1238,6 +1240,11 @@ input:checked+.switch-slider:before {
     /* Safe Area for bottom scrolling */
     .table-container {
         padding-bottom: 3rem;
+    }
+
+
+    .columnConfig {
+        display: none;
     }
 }
 
