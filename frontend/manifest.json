@@ -1,21 +1,25 @@
 {
     "name": "Race Timer High-Performance",
     "short_name": "RaceTimer",
+    "lang": "de",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#0f172a",
     "theme_color": "#0f172a",
     "description": "Präzise Zeitnehmung für Wettkämpfe",
+    "prefer_related_applications": false,
     "icons": [
         {
             "src": "logo.png",
             "sizes": "192x192",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "maskable any"
         },
         {
             "src": "logo.png",
             "sizes": "512x512",
-            "type": "image/png"
+            "type": "image/png",
+            "purpose": "maskable any"
         }
     ],
     "orientation": "portrait-primary",
