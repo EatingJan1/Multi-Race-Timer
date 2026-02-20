@@ -1772,41 +1772,82 @@ if (importCsvBtn) {
     };
 }
 
-// Neue Logik für leere Tabelle
 if (createEmptyRaceBtn) {
-    createEmptyRaceBtn.onclick = (e) => {
+    createEmptyRaceBtn.onclick = async (e) => { // async hinzugefügt für await fetch
         e.preventDefault();
-        e.stopPropagation(); // Wichtig, damit das Menü schließt und kein doppelter Klick passiert
+        e.stopPropagation();
 
-        const raceName = prompt("Name für die neue Liste:");
+        const raceNamepr = prompt("Name für die neue Liste:");
+
+        const raceName = raceNamepr.replace(/\.[^/.]+$/, "").replace(/\s+/g, '_');
+
         if (!raceName || raceName.trim() === "") return;
 
-        // Daten zurücksetzen
-        participants = [];
-        currentRace = raceName.trim();
-        localStorage.setItem('currentRace', currentRace);
+        const cleanedName = raceName.trim();
 
-        // UI Update
-        if (typeof activeName !== 'undefined') activeName.textContent = currentRace;
-        renderParticipants();
+        try {
+            // 1. Backend-Request: Leeres Rennen erstellen
 
-        // Automatisch in den Bearbeitungsmodus wechseln
-        editMode = true;
-        const editSwitch = document.getElementById('editModeSwitch');
-        if (editSwitch) editSwitch.checked = true;
+            //const response = await fetch(`/race/${encodeURIComponent(abc)}/full`, {
+            const response = await fetch(`${API_BASE}/${encodeURIComponent(cleanedName)}/full`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ people: [] }),
+                credentials: 'include'
+            });
 
-        // Button-Zustände im Admin-Bereich aktualisieren
-        const editActions = document.getElementById('editActions');
-        if (editActions) editActions.style.display = 'flex';
+            if (!response.ok) {
+                throw new Error(`Fehler beim Erstellen des Rennens im Backend`);
+            }
 
-        // Teilnehmer-Hinzufügen Modal öffnen
-        const addBtn = document.getElementById('addParticipantBtn');
-        if (addBtn) addBtn.click();
+            // 2. Lokalen State aktualisieren
+            participants = [];
+            currentRace = cleanedName;
+            localStorage.setItem('currentRace', currentRace);
 
-        const content = document.querySelector('.dropdown-content');
-        if (content) {
-            content.style.display = 'none';
-            setTimeout(() => content.style.display = '', 200);
+            // 3. Dropdown-Menü (sessionSelect) aktualisieren
+            // Wir laden die Sessions neu, damit das Dropdown synchron mit dem Backend ist
+            if (typeof fetchSessions === 'function') {
+                await fetchSessions();
+            } else {
+                // Fallback: Manuell hinzufügen, falls fetchSessions nicht verfügbar
+                const opt = document.createElement('option');
+                opt.value = cleanedName;
+                opt.textContent = cleanedName;
+                sessionSelect.appendChild(opt);
+            }
+
+            // Sofort auf das neue Rennen umschalten
+            sessionSelect.value = cleanedName;
+
+            // 4. UI-Elemente aktualisieren
+            if (typeof activeName !== 'undefined') activeName.textContent = currentRace;
+
+            // Tabelle leeren und Header für das neue Rennen vorbereiten
+            renderTable();
+
+            // 5. Automatisch in den Bearbeitungsmodus wechseln
+            editMode = true;
+            const editSwitch = document.getElementById('editModeSwitch');
+            if (editSwitch) editSwitch.checked = true;
+
+            const editActions = document.getElementById('editActions');
+            if (editActions) editActions.style.display = 'flex';
+
+            // Menü schließen
+            const content = document.querySelector('.dropdown-content');
+            if (content) {
+                content.style.display = 'none';
+                setTimeout(() => content.style.display = '', 200);
+            }
+
+            console.log(`Rennen "${cleanedName}" erfolgreich im Backend erstellt.`);
+
+        } catch (error) {
+            console.error(error);
+            alert("Fehler beim Erstellen des Rennens: " + error.message);
         }
     };
 }
