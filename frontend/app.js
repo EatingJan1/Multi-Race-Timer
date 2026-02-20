@@ -1028,14 +1028,14 @@ saveParticipantBtn.onclick = async () => {
         p.name = name; p.start_number = sn; p.id = sn.toString(); p.tags = tags;
     }
     participants.sort((a, b) => a.start_number - b.start_number);
-    await apiCall(`/${currentRace}/people`, 'POST', participants);
+    await apiCall(`/${currentRace}/people`, 'PUT', participants);
     editParticipantModal.classList.remove('active');
     await fetchParticipants();
 };
 window.deleteParticipant = async (index) => {
     if (!confirm(`Teilnehmer ${participants[index].name} wirklich löschen?`)) return;
     participants.splice(index, 1);
-    await apiCall(`/${currentRace}/people`, 'POST', participants);
+    await apiCall(`/${currentRace}/people`, 'PUT', participants);
     await fetchParticipants();
 };
 
@@ -1509,7 +1509,7 @@ csvFileInput.addEventListener('change', async (e) => {
                 };
             });
             console.log(people);
-            await apiCall(`/${raceName}/people`, 'POST', people);
+            await apiCall(`/${raceName}/people`, 'PUT', people);
         } else {
             // Assume CSV
             const text = await file.text();
@@ -1528,7 +1528,7 @@ csvFileInput.addEventListener('change', async (e) => {
                     start_number: sn, tags: tags, start_time: null, end_time: null, duration: null
                 };
             });
-            await apiCall(`/${raceName}/people`, 'POST', people);
+            await apiCall(`/${raceName}/people`, 'PUT', people);
         }
 
         currentRace = raceName;
