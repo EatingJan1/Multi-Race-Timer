@@ -57,6 +57,8 @@ const activeStartNumber = document.getElementById('activeStartNumber');
 const mainTimer = document.getElementById('mainTimer');
 const mainActionBtn = document.getElementById('mainActionBtn');
 const importCsvBtn = document.getElementById('importCsvBtn');
+const uploadBtn = document.getElementById('uploadParticipantsBtn');
+const fileInput = document.getElementById('tableFileAdd');
 const createEmptyRaceBtn = document.getElementById('createEmptyRaceBtn');
 
 // Modals
@@ -1498,6 +1500,9 @@ csvFileInput.addEventListener('change', async (e) => {
                 const sn = parseInt(item['Startnummer'] || item['Startnr.'] || item['Number'] || item['#']) || (i + 1);
                 const tagsRaw = item['Kategorie'] || item['Tags'] || item['Kategorien'] || '';
                 const tags = tagsRaw.toString().split(/[,\s]+/).filter(t => t.length > 0);
+                duration = item['Duration'] || item['Dauer'] || item['Zeit'];
+
+
                 return {
                     id: sn.toString(),
                     name: item['Name'] || item['Full Name'] || `Person ${i + 1}`,
@@ -1505,10 +1510,9 @@ csvFileInput.addEventListener('change', async (e) => {
                     tags: tags,
                     start_time: null,
                     end_time: null,
-                    duration: null
+                    duration: duration
                 };
             });
-            console.log(people);
             await apiCall(`/${raceName}/people`, 'PUT', people);
         } else {
             // Assume CSV
@@ -1852,6 +1856,10 @@ if (createEmptyRaceBtn) {
         }
     };
 }
+
+
+
+
 
 activeSection.addEventListener('click', handleMainAction);
 async function downloadSignedPdf(index) {
