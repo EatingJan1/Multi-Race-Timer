@@ -143,8 +143,7 @@ def load_data(race_name):
                     "finished": False,
                     "form_config": []
                 }
-            if "registration_template" not in data:
-                data["registration_template"] = None
+
             return data
     return {
         "people": [],
@@ -155,7 +154,6 @@ def load_data(race_name):
             "finished": False,
             "form_config": []
         },
-        "registration_template": None
     }
 
 def save_data(race_name, data):
@@ -254,8 +252,7 @@ class PublicRaceList(Resource):
             if not settings.get('hidden', False):
                 public_races.append({
                     'name': race_name,
-                    'settings': settings,
-                    'has_template': data.get('registration_template') is not None
+                    'settings': settings
                 })
         return sorted(public_races, key=lambda x: x['name'], reverse=True)
 
