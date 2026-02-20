@@ -327,11 +327,12 @@ class FullData(Resource):
         return load_data(race_name)
 
     @login_required
-    def post(self, race_name):
+    def put(self, race_name):
         """Upload full race data as JSON"""
         data = request.json
         save_data(race_name, data)
         return data, 201
+
 
 @ns.route('/<string:race_name>/start/<int:start_number>')
 class StartPerson(Resource):

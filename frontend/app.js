@@ -1485,7 +1485,7 @@ csvFileInput.addEventListener('change', async (e) => {
         if (fileName.endsWith('.race')) {
             const text = await file.text();
             const fullData = JSON.parse(text);
-            await apiCall(`/${raceName}/full`, 'POST', fullData);
+            await apiCall(`/${raceName}/full`, 'PUT', fullData);
         } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
@@ -1508,6 +1508,7 @@ csvFileInput.addEventListener('change', async (e) => {
                     duration: null
                 };
             });
+            console.log(people);
             await apiCall(`/${raceName}/people`, 'POST', people);
         } else {
             // Assume CSV
@@ -1788,9 +1789,9 @@ if (createEmptyRaceBtn) {
         try {
             // 1. Backend-Request: Leeres Rennen erstellen
 
-            //const response = await fetch(`/race/${encodeURIComponent(abc)}/full`, {
+
             const response = await fetch(`${API_BASE}/${encodeURIComponent(cleanedName)}/full`, {
-                method: 'POST',
+                method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
