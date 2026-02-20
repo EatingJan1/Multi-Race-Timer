@@ -192,11 +192,23 @@ class PersonList(Resource):
         return data['people']
 
     @login_required
-    def post(self, race_name):
+    def put(self, race_name):
         """Import people into a specific race"""
         people = request.json
         data = load_data(race_name)
         data['people'] = people
+        save_data(race_name, data)
+        return data['people'], 201
+    
+@ns.route('/<string:race_name>/people/append')
+class PersonList(Resource):
+    @ns.marshal_list_with(person_model)
+    @login_required
+    def post(self, race_name):
+        """Append People to a specific race"""
+        people = request.json
+        data = load_data(race_name)
+        data['people'] += people
         save_data(race_name, data)
         return data['people'], 201
 
