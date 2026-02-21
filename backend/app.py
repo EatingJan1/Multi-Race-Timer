@@ -42,7 +42,7 @@ for d in [DATA_DIR, SIGNED_DIR]:
         os.makedirs(d)
 
 #USERS_FILE = os.path.join(DATA_DIR, 'users.json')
-USERS_FILE = 'users.json'
+USERS_FILE = 'var/users.json'
 
 def load_users():
     if not os.path.exists(USERS_FILE):
