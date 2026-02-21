@@ -800,7 +800,7 @@ function renderTable() {
     let displayList = participants.filter(p => !currentTag || (p.tags && p.tags.includes(currentTag)));
 
     // 2. Pre-calculate Ranks based on duration
-    displayList.filter(p => !(p.duration > 0)).forEach(p => {
+    displayList.filter(p => (!(p.duration > 0) && p.end_time)).forEach(p => {
         const start = new Date(p.start_time);
         const end = new Date(p.end_time);
         p.duration = (end - start) / 1000;
