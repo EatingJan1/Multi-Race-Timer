@@ -219,8 +219,8 @@ function renderRaceGrid(races) {
     upcomingRacesList.innerHTML = '';
     finishedRacesList.innerHTML = '';
 
-    const upcoming = races.filter(r => !r.settings.finished && !r.settings.hidden);
-    const finished = races.filter(r => r.settings.finished && !r.settings.hidden);
+    const upcoming = races.filter(r => r.settings.displaytype !== 'finished' && r.settings.displaytype !== 'hidden');
+    const finished = races.filter(r => r.settings.displaytype === 'finished' && r.settings.displaytype !== 'hidden');
 
     if (upcoming.length === 0) {
         upcomingRacesList.innerHTML = '<div class="race-card-skeleton">Keine aktiven Rennen</div>';
@@ -241,11 +241,11 @@ function createRaceCard(race) {
     const card = document.createElement('div');
     card.className = 'race-card';
     let statusBadge = '';
-    if (race.settings.finished) {
+    if (race.settings.displaytype === 'finished') {
         statusBadge = '<span class="badge badge-closed">Beendet</span>';
-    } else if (race.settings.allow_registration && !race.settings.registration_stop) {
+    } else if (race.settings.displaytype === "open") {
         statusBadge = '<span class="badge badge-live">Anmeldung Offen</span>';
-    } else if (race.settings.registration_stop) {
+    } else if (race.settings.displaytype === 'registration_stop') {
         statusBadge = '<span class="badge badge-closed">Anmeldung geschlossen</span>';
     } else {
         statusBadge = '<span class="badge badge-future">Vorbereitung</span>';
@@ -259,12 +259,12 @@ function createRaceCard(race) {
             </div>
         </div>
         <button class="btn btn-primary small">
-            ${(race.settings.finished || race.settings.registration_stop) ? 'Ergebnisse / Liste' : 'Details / Anmeldung'}
+            ${(race.settings.displaytype === 'finished' || race.settings.displaytype === 'registration_stop') ? 'Ergebnisse / Liste' : 'Details / Anmeldung'}
         </button>
     `;
 
     card.onclick = () => {
-        if (race.settings.allow_registration && !race.settings.registration_stop) {
+        if (race.settings.displaytype === "open") {
             openRegistration(race);
         } else {
             showPublicResults(race);
@@ -277,7 +277,7 @@ async function showPublicResults(race) {
     hideAllViews();
     currentRace = race.name;
     resultsTitle.textContent = race.name.replace(/_/g, ' ');
-    resultsSubtitle.textContent = race.settings.finished ? 'Offizielle Endergebnisse' : 'Aktuelle Teilnehmerliste';
+    resultsSubtitle.textContent = race.settings.displaytype === 'finished' ? 'Offizielle Endergebnisse' : 'Aktuelle Teilnehmerliste';
 
     if (publicResultsPage) publicResultsPage.style.display = 'block';
 
@@ -289,7 +289,7 @@ async function showPublicResults(race) {
         const people = await res.json();
 
         // Sort if finished
-        if (race.settings.finished) {
+        if (race.settings.displaytype === 'finished') {
             people.sort((a, b) => {
 
                 if (a.duration && b.duration) return a.duration - b.duration;
@@ -303,7 +303,7 @@ async function showPublicResults(race) {
 
         // Header
         let headerHtml = `<th>#</th><th>Name</th><th>Kategorie</th>`;
-        if (race.settings.finished) headerHtml += `<th>Zeit</th><th>Platz</th>`;
+        if (race.settings.displaytype === 'finished') headerHtml += `<th>Zeit</th><th>Platz</th>`;
         else headerHtml += `<th>Status</th>`;
         publicResultsHeader.innerHTML = headerHtml;
 
@@ -315,7 +315,7 @@ async function showPublicResults(race) {
             let statusStr = p.end_time ? 'Fertig' : (p.start_time ? 'Unterwegs' : 'Bereit');
 
             let html = `<td>${p.start_number}</td><td>${p.name}</td><td>${p.tags.join(', ')}</td>`;
-            if (race.settings.finished) {
+            if (race.settings.displaytype === 'finished') {
                 html += `<td>${timeStr}</td><td>${i + 1}.</td>`;
             } else {
                 html += `<td>${statusStr}</td>`;
@@ -558,11 +558,7 @@ function updateSettingsUI() {
 
     // Race Status Select
     if (raceStatusSelect) {
-        if (currentRaceSettings.allow_registration) raceStatusSelect.value = 'open';
-        else if (currentRaceSettings.registration_stop) raceStatusSelect.value = 'registration_stop';
-        else if (currentRaceSettings.hidden) raceStatusSelect.value = 'hidden';
-        else if (currentRaceSettings.finished) raceStatusSelect.value = 'finished';
-        else raceStatusSelect.value = 'preparation';
+        currentRaceSettings.displaytype = raceStatusSelect.value;
     }
 
     if (startNumMinInput) startNumMinInput.value = currentRaceSettings.start_num_min || '';
@@ -684,10 +680,7 @@ async function saveRaceSettings() {
 
     const val = raceStatusSelect.value;
     const settingsToSend = {
-        allow_registration: val === 'open',
-        registration_stop: val === 'registration_stop',
-        hidden: val === 'hidden',
-        finished: val === 'finished',
+        "displaytype": val,
         form_config: currentRaceSettings.form_config || []
     };
 

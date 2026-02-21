@@ -137,10 +137,7 @@ def load_data(race_name):
             if "people" not in data: data["people"] = []
             if "settings" not in data:
                 data["settings"] = {
-                    "allow_registration": False,
-                    "registration_stop": False,
-                    "hidden": False,
-                    "finished": False,
+                    "displaytype": "hidden",
                     "form_config": []
                 }
 
@@ -148,10 +145,7 @@ def load_data(race_name):
     return {
         "people": [],
         "settings": {
-            "allow_registration": False,
-            "registration_stop": False,
-            "hidden": False,
-            "finished": False,
+            "displaytype": "hidden",
             "form_config": []
         },
     }
@@ -249,7 +243,7 @@ class PublicRaceList(Resource):
         for race_name in files:
             data = load_data(race_name)
             settings = data.get('settings', {})
-            if not settings.get('hidden', False):
+            if not settings.get('displaytype', 'hidden') == 'hidden':
                 public_races.append({
                     'name': race_name,
                     'settings': settings
@@ -263,7 +257,7 @@ class PublicRegister(Resource):
         data = load_data(race_name)
         settings = data.get('settings', {})
         
-        if not settings.get('allow_registration', False) or settings.get('registration_stop', False):
+        if not settings.get('displaytype', 'hidden') == 'open' or settings.get('displaytype', 'hidden') == 'registration_stop':
             abort(403, "Registration is closed or not allowed")
             
         registration_data = request.json # Contains participant info
