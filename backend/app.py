@@ -292,7 +292,6 @@ class PublicRegister(Resource):
             'tags': registration_data.get('tags', []),
             'start_time': None,
             'end_time': None,
-            'duration': None
         }
 
         data['people'].append(new_person)
@@ -360,7 +359,6 @@ class StartPerson(Resource):
             if person['start_number'] == start_number:
                 person['start_time'] = timestamp
                 person['end_time'] = None
-                person['duration'] = None
                 found = True
                 break
         if not found: api.abort(404, "Start number not found")
