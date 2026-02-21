@@ -48,7 +48,7 @@ def load_users():
     if not os.path.exists(USERS_FILE):
         # Create default admin user if file doesn't exist
         default_users = {
-            os.environ.get('ADMIN_USER', 'admin'): os.environ.get('ADMIN_PASS', 'password')
+            os.environ.get('ADMIN_USER', 'admin'): {"password": os.environ.get('ADMIN_PASS', 'password')}
         }
         print("Creating default admin user: " + os.environ.get('ADMIN_USER', 'admin'))
         with open(USERS_FILE, 'w') as f:
@@ -88,7 +88,7 @@ class Login(Resource):
         
         users = load_users()
         
-        if username in users and users[username] == password:
+        if username in users and users[username]["password"] == password:
             session['logged_in'] = True
             session['user'] = username
             print("Login successful for user: " + username)
