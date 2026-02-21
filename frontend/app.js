@@ -565,8 +565,8 @@ function updateSettingsUI() {
         else raceStatusSelect.value = 'preparation';
     }
 
-    //if (startNumMinInput) startNumMinInput.value = currentRaceSettings.start_num_min || '';
-    //if (startNumMaxInput) startNumMaxInput.value = currentRaceSettings.start_num_max || '';
+    if (startNumMinInput) startNumMinInput.value = currentRaceSettings.start_num_min || '';
+    if (startNumMaxInput) startNumMaxInput.value = currentRaceSettings.start_num_max || '';
 
     renderFormDesigner(currentRaceSettings.form_config || []);
 
@@ -688,10 +688,18 @@ async function saveRaceSettings() {
         registration_stop: val === 'registration_stop',
         hidden: val === 'hidden',
         finished: val === 'finished',
-        form_config: currentRaceSettings.form_config || [],
-        start_num_min: parseInt(startNumMinInput.value) || 0,
-        start_num_max: parseInt(startNumMaxInput.value) || 0
+        form_config: currentRaceSettings.form_config || []
     };
+
+
+    if (parseInt(startNumMinInput.value)) {
+        settingsToSend.start_num_min = parseInt(startNumMinInput.value);
+    }
+
+    if (parseInt(startNumMaxInput.value)) {
+        settingsToSend.start_num_max = parseInt(startNumMaxInput.value);
+    }
+
     await apiCall(`/${currentRace}/settings`, 'POST', settingsToSend);
 }
 
@@ -1570,7 +1578,10 @@ deleteSessionBtn.onclick = async () => {
 };
 
 settingsBtn.onclick = () => settingsModal.classList.add('active');
-closeSettings.onclick = () => settingsModal.classList.remove('active');
+closeSettings.onclick = () => {
+    settingsModal.classList.remove('active')
+    saveRaceSettings();
+};
 
 if (modeSwitch) modeSwitch.onchange = () => {
     startMode = modeSwitch.checked ? 'delayed' : 'direct';
@@ -1584,6 +1595,8 @@ if (editSwitch) editSwitch.onchange = () => {
 };
 
 if (raceStatusSelect) raceStatusSelect.onchange = saveRaceSettings;
+if (startNumMin) startNumMin.onchange = saveRaceSettings;
+if (startNumMax) startNumMax.onchange = saveRaceSettings;
 
 
 if (adminLoginBtn) adminLoginBtn.onclick = () => {
