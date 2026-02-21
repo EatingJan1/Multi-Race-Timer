@@ -565,8 +565,8 @@ function updateSettingsUI() {
         else raceStatusSelect.value = 'preparation';
     }
 
-    if (startNumMinInput) startNumMinInput.value = currentRaceSettings.start_num_min || '';
-    if (startNumMaxInput) startNumMaxInput.value = currentRaceSettings.start_num_max || '';
+    //if (startNumMinInput) startNumMinInput.value = currentRaceSettings.start_num_min || '';
+    //if (startNumMaxInput) startNumMaxInput.value = currentRaceSettings.start_num_max || '';
 
     renderFormDesigner(currentRaceSettings.form_config || []);
 

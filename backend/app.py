@@ -270,8 +270,10 @@ class PublicRegister(Resource):
         signed_pdf_base64 = registration_data.get('signed_pdf') # Base64 of final PDF
         
         # Add person to race
-        min_num = settings.get('start_num_min', 1)
+        min_num = settings.get('start_num_min', 100)
+        print(min_num)
         max_num = settings.get('start_num_max', 9999)
+        print(max_num)
         
         used_numbers = [p['start_number'] for p in data['people']]
         
@@ -280,7 +282,7 @@ class PublicRegister(Resource):
         while start_num in used_numbers and start_num <= max_num:
             start_num += 1
             
-        if start_num > max_num:
+        if start_num >= max_num:
             abort(400, "Keine freien Startnummern mehr in diesem Bereich!")
 
         new_person = {
