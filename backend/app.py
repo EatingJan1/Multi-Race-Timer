@@ -381,9 +381,9 @@ class StopPerson(Resource):
                 if 'start_time' not in person or not person['start_time']:
                     api.abort(400, "Not started")
                 person['end_time'] = timestamp
-                start_dt = datetime.datetime.fromisoformat(person['start_time'])
-                end_dt = datetime.datetime.fromisoformat(timestamp)
-                person['duration'] = (end_dt - start_dt).total_seconds()
+                #start_dt = datetime.datetime.fromisoformat(person['start_time'])
+                #end_dt = datetime.datetime.fromisoformat(timestamp)
+                #person['duration'] = (end_dt - start_dt).total_seconds()
                 found = True
                 break
         if not found: api.abort(404, "Start number not found")

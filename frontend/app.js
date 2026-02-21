@@ -291,6 +291,7 @@ async function showPublicResults(race) {
         // Sort if finished
         if (race.settings.finished) {
             people.sort((a, b) => {
+
                 if (a.duration && b.duration) return a.duration - b.duration;
                 if (a.duration) return -1;
                 if (b.duration) return 1;
@@ -799,11 +800,18 @@ function renderTable() {
     let displayList = participants.filter(p => !currentTag || (p.tags && p.tags.includes(currentTag)));
 
     // 2. Pre-calculate Ranks based on duration
+    displayList.filter(p => !(p.duration > 0)).forEach(p => {
+        const start = new Date(p.start_time);
+        const end = new Date(p.end_time);
+        p.duration = (end - start) / 1000;
+    });
+
     const finishedFiltered = displayList
         .filter(p => p.duration)
         .sort((a, b) => a.duration - b.duration);
 
     finishedFiltered.forEach((p, i) => {
+
         if (i > 0 && p.duration === finishedFiltered[i - 1].duration) {
             p.rank = finishedFiltered[i - 1].rank;
         } else {
@@ -828,14 +836,21 @@ function renderTable() {
         let diffDisplay = '-';
         let diffClass = 'diff-col';
 
+
+
         if (p.start_time && !p.end_time) {
             status = 'Läuft';
             badgeClass = 'status-running';
             durationDisplay = `<span class="row-live-timer" data-start="${p.start_time}">-</span>`;
-        } else if (p.end_time) {
+        } else if ((p.end_time) || (!p.start_time && !p.end_time && p.duration > 0)) {
             status = 'Fertig';
             badgeClass = 'status-finished';
-            durationDisplay = (p.duration || 0).toFixed(3) + 's';
+            if (p.end_time) {
+                const start = new Date(p.start_time);
+                const end = new Date(p.end_time);
+                durationDisplay = ((end - start) / 1000).toFixed(3) + 's';
+            } else { durationDisplay = (p.duration || 0).toFixed(3) + 's'; }
+
             const rank = p.rank;
             rankDisplay = rank + '.';
 
