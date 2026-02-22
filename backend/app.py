@@ -321,6 +321,9 @@ class PublicParticipants(Resource):
         """Get public participant list/results for a race"""
         data = load_data(race_name)
         # Return only people, sanitized if necessary (though current person object is public-friendly)
+        if data.get('settings', {}).get('displaytype', 'hidden') != 'finished':
+            abort(403, "Race is not closed")
+        
         return data.get('people', [])
 
 @ns.route('/<string:race_name>/full')
