@@ -8,6 +8,7 @@ from flask_cors import CORS
 import io
 import csv
 import subprocess
+import secrets
 
 app = Flask(__name__)
 # IMPORTANT: Set a secret key for session management!
@@ -243,7 +244,11 @@ class PublicRaceList(Resource):
         for race_name in files:
             data = load_data(race_name)
             settings = data.get('settings', {})
-            if not settings.get('displaytype', 'hidden') == 'hidden':
+            print(settings)
+            if 'key' in settings:
+                settings.pop('key')
+
+            if not (settings.get('displaytype', 'hidden') == 'hidden' or settings.get('displaytype', 'hidden') == 'kiosk'):
                 public_races.append({
                     'name': race_name,
                     'settings': settings
@@ -256,11 +261,15 @@ class PublicRegister(Resource):
         """Register for a race"""
         data = load_data(race_name)
         settings = data.get('settings', {})
-        
-        if not settings.get('displaytype', 'hidden') == 'open' or settings.get('displaytype', 'hidden') == 'registration_stop':
-            abort(403, "Registration is closed or not allowed")
-            
         registration_data = request.json # Contains participant info
+        print(settings.get('displaytype', 'hidden'))
+        
+        if settings.get('displaytype', 'hidden') == 'registration_stop' or settings.get('displaytype', 'hidden') == 'finished':
+            abort(403, "Registration is closed or not allowed")
+
+        if settings.get('displaytype', 'hidden') == 'kiosk' and settings.get('key', '') != registration_data.get('key'):
+            abort(403, "No access to this race")
+            
         signed_pdf_base64 = registration_data.get('signed_pdf') # Base64 of final PDF
         
         # Add person to race
@@ -315,6 +324,22 @@ class PublicRegister(Resource):
                 
         return {'status': 'success', 'start_number': new_person['start_number']}, 201
 
+@public_ns.route('/kiosk/register/<string:race_name>')
+class PublicParticipants(Resource):
+    def post(self, race_name):
+        """Use Key acsses Kiosk Mode"""
+        json = request.json
+        SECKEY = json.get("SECKEY", "")
+        data = load_data(race_name)
+        settings = data.get('settings', {})
+        key = settings.get('key', "") 
+
+        if key != SECKEY:
+            abort(403, "No access to this race")
+        
+        return {"Race" : load_data(race_name)}
+
+
 @public_ns.route('/results/<string:race_name>')
 class PublicParticipants(Resource):
     def get(self, race_name):
@@ -358,7 +383,7 @@ class StartPerson(Resource):
                 person['end_time'] = None
                 found = True
                 break
-        if not found: api.abort(404, "Start number not found")
+        if not found: abort(404, "Start number not found")
         save_data(race_name, data)
         return {'status': 'started', 'timestamp': timestamp}
 
@@ -376,14 +401,14 @@ class StopPerson(Resource):
         for person in data['people']:
             if person['start_number'] == start_number:
                 if 'start_time' not in person or not person['start_time']:
-                    api.abort(400, "Not started")
+                    abort(400, "Not started")
                 person['end_time'] = timestamp
                 #start_dt = datetime.datetime.fromisoformat(person['start_time'])
                 #end_dt = datetime.datetime.fromisoformat(timestamp)
                 #person['duration'] = (end_dt - start_dt).total_seconds()
                 found = True
                 break
-        if not found: api.abort(404, "Start number not found")
+        if not found: abort(404, "Start number not found")
         save_data(race_name, data)
         return {'status': 'stopped', 'timestamp': timestamp}
 
@@ -396,7 +421,7 @@ class DeleteRace(Resource):
         if os.path.exists(path):
             os.remove(path)
             return {'status': 'deleted'}
-        api.abort(404)
+        abort(404)
 
 @ns.route('/<string:race_name>/export')
 class ExportRace(Resource):
@@ -445,13 +470,34 @@ class DownloadSignedPdf(Resource):
             
             if not os.path.exists(file_path):
                 print(f"PDF not found: {file_path}")
-                return api.abort(404, f"PDF file {filename} not found")
+                return abort(404, f"PDF file {filename} not found")
             
             return send_file(file_path, mimetype='application/pdf')
             
         except Exception as e:
             print(f"Error serving PDF: {e}")
-            return api.abort(500, str(e))
+            return abort(500, str(e))
+        
+
+@ns.route('/<string:race_name>/genkey')
+class FullData(Resource):
+
+    @login_required
+    def get(self, race_name):
+        """Upload full race data as JSON"""
+        
+        data = load_data(race_name)
+        settings = data.get("settings", {})
+        key = settings.get("key", "")
+
+        if key == "":
+            token = secrets.token_urlsafe()
+            data['settings']['key'] = token
+            save_data(race_name, data)
+            return {"key" : token}, 201 
+
+        return {"status": "success", "key" : key}, 200
+    
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5002)

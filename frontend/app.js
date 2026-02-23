@@ -145,16 +145,28 @@ async function init() {
 
     const params = new URLSearchParams(window.location.search);
     const kioskParam = params.get('k');
+    const key = params.get('y');
 
-    if (kioskParam) {
+    if (kioskParam && key) {
         try {
             const raceName = atob(kioskParam);
-            const res = await fetch(`${PUBLIC_BASE}/races`);
-            const races = await res.json();
-            const race = races.find(r => r.name === raceName);
+
+            const res = await fetch(`${PUBLIC_BASE}/kiosk/register/${raceName}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({'SECKEY': key}),
+                credentials: 'include'
+            });
+            
+            const race = await res.json();
+            settings = race["Race"]["settings"];
+            race_temp = {settings};
+            race_temp.name = raceName
+
+
             if (race) {
                 // Force Kiosk Mode
-                await openRegistration(race, false, true);
+                await openRegistration(race_temp, false, true);
                 startPolling();
                 return;
             }
@@ -163,6 +175,7 @@ async function init() {
         }
     }
 
+    
     updateSettingsUI();
     const isLoggedIn = await checkAuthStatus();
 
@@ -332,6 +345,7 @@ async function showPublicResults(race) {
         publicResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Daten konnten nicht geladen werden.</td></tr>';
     }
 }
+
 
 async function openRegistration(race, isPreview = false, isKiosk = false) {
     hideAllViews();
@@ -1602,13 +1616,27 @@ if (cancelLoginBtn) cancelLoginBtn.onclick = () => {
     loginError.style.display = 'none';
 };
 
-if (startKioskBnt) startKioskBnt.onclick = () => {
-    if (!currentRace) return;
-    // Open in new tab with obfuscated hash
-    const hash = btoa(currentRace);
-    const url = `${window.location.origin}${window.location.pathname}?k=${hash}`;
-    window.open(url, '_blank');
-};
+if (startKioskBnt) {
+    startKioskBnt.onclick = async () => {
+        if (!currentRace) return;
+
+        try {
+            const hash = btoa(currentRace);
+
+            const res = await apiCall(`/${currentRace}/genkey`, 'GET');
+            const key = res["key"];
+            
+            const url = `${window.location.origin}${window.location.pathname}?k=${hash}&y=${key}`;
+            
+            
+            open(url, '_blank');
+            //open(url, '_blank', );
+        } catch (err) {
+            console.error("Kiosk launch failed:", err);
+        }
+
+    };
+}
 
 if (backToLandingBtn) backToLandingBtn.onclick = () => {
     if (isRegistrationPreview) showAdminApp();
@@ -1627,6 +1655,7 @@ if (submitRegistrationBtn) {
         let participantName = ""; // Initialize empty
         let participantTags = [];
         let finalPdfUri = null;
+        let key;
 
         // Pre-check mandatory fields
         const config = currentRaceSettings.form_config || [];
@@ -1736,10 +1765,14 @@ if (submitRegistrationBtn) {
             console.error("PDF creation failed", e);
         }
 
+        const params = new URLSearchParams(window.location.search);
+        key = params.get('y');
+
         const regData = {
             name: participantName,
             tags: participantTags,
-            signed_pdf: signedPdfBase64
+            signed_pdf: signedPdfBase64,
+            key: key
         };
 
         try {
