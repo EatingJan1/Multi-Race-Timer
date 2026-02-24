@@ -778,16 +778,17 @@ tr.active-row td {
     margin-bottom: 0;
 }
 
+/* Consolidated Checkmark Styling */
 .checkmark {
     position: absolute;
     top: 50%;
     left: 0;
     transform: translateY(-50%);
-    height: 22px;
-    width: 22px;
-    border-radius: 7px;
+    height: 20px;
+    width: 20px;
     background-color: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
     transition: all 0.2s;
 }
 
@@ -819,18 +820,6 @@ tr.active-row td {
     width: 0;
 }
 
-.checkmark {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 18px;
-    width: 18px;
-    background-color: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-    transition: all 0.2s;
-}
-
 .check-container:hover input~.checkmark {
     background-color: rgba(255, 255, 255, 0.1);
 }
@@ -855,6 +844,22 @@ tr.active-row td {
 
 .check-container input:checked~.checkmark:after {
     display: block;
+}
+
+/* Radio Specific Dot instead of Checkmark */
+.check-container input[type="radio"]~.checkmark {
+    border-radius: 50%;
+}
+
+.check-container input[type="radio"]:checked~.checkmark:after {
+    left: 50%;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: white;
+    border: none;
+    transform: translate(-50%, -50%);
 }
 
 .setting-item {
@@ -941,7 +946,7 @@ input:checked+.switch-slider:before {
     box-shadow: inset 1px 1px 0 rgba(69, 168, 243, 0.2), inset 0 0 10px rgba(255, 255, 255, 0.6);
 }
 
-.columnConfig {}
+/* .columnConfig utility class removed to avoid empty ruleset warning */
 
 
 
@@ -985,6 +990,7 @@ input:checked+.switch-slider:before {
 .accent-text {
     background: linear-gradient(135deg, #818cf8, #6366f1);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
@@ -1289,7 +1295,8 @@ input:checked+.switch-slider:before {
 
     flex-direction: row;
     display: flex;
-    flex-wrap: wrap;        /* Erlaubt Umbruch auf sehr schmalen Handys */
+    flex-wrap: wrap;
+    /* Erlaubt Umbruch auf sehr schmalen Handys */
     justify-content: center;
     align-items: center;
     gap: 2rem;
@@ -1382,6 +1389,68 @@ input:checked+.switch-slider:before {
 }
 
 /* Mobile styles */
+/* Public Results Page Controls */
+.public-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: center;
+    justify-content: center;
+    margin: -1.5rem auto 3rem auto;
+    padding: 0 2rem;
+    max-width: 1200px;
+}
+
+.public-control-item {
+    height: 44px;
+    /* Fixed height for consistency */
+    display: flex;
+    align-items: center;
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    padding: 0 1.25rem;
+    transition: all 0.3s ease;
+}
+
+.public-control-item:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.public-controls select.public-control-item {
+    min-width: 220px;
+    color: var(--text-main);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 1.2rem;
+}
+
+#rankingMethodContainer.public-control-item {
+    gap: 1.5rem;
+}
+
+#rankingMethodContainer label {
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0;
+}
+
+#rankingMethodContainer .radio-group-inner {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
 @media (max-width: 768px) {
     body {
         padding: 0.5rem;
@@ -1406,6 +1475,43 @@ input:checked+.switch-slider:before {
         padding: 1rem;
         border-radius: 16px;
         margin-bottom: 1.5rem;
+    }
+
+    .landing-content {
+        padding: 0 1rem;
+    }
+
+    .hero-section {
+        padding: 3rem 1rem;
+    }
+
+    .glass-nav {
+        padding: 0.75rem 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    #rankingMethodContainer {
+        display: flex !important;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .public-controls {
+        margin: -1rem auto 1.5rem auto !important;
+        padding: 0 1rem !important;
+        gap: 0.75rem !important;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .public-control-item {
+        height: 54px !important;
+        width: 100% !important;
+    }
+
+    #rankingMethodContainer.public-control-item {
+        justify-content: space-between;
+        padding: 0 1.25rem !important;
     }
 
     .control-group-left,
@@ -1497,53 +1603,88 @@ input:checked+.switch-slider:before {
     }
 
     /* Card-Based List Layout for Mobile */
-    #raceTable thead {
+    #raceTable thead,
+    #publicResultsTable thead {
         display: none;
     }
 
     #raceTable,
     #raceTable tbody,
     #raceTable tr,
-    #raceTable td {
+    #raceTable td,
+    #publicResultsTable,
+    #publicResultsTable tbody,
+    #publicResultsTable tr,
+    #publicResultsTable td {
         display: block;
         width: 100%;
     }
 
-    #raceTable tr {
+    #publicResultsTable td {
+        display: block;
+        width: 100%;
+    }
+
+    #raceTable tr,
+    #publicResultsTable tr {
         margin-bottom: 1rem;
-        background: rgba(255, 255, 255, 0.03);
+        background: rgba(30, 41, 59, 0.4);
         border: 1px solid var(--card-border);
-        border-radius: 16px;
+        border-radius: 20px;
         position: relative;
-        /* For absolute positioning of some elements if needed */
         display: grid;
-        /* Custom Grid Layout for Mobile Card */
-        /* Columns: [Left: Status/Action] [Middle: Info] [Right: Times/Rank] */
         grid-template-columns: 1fr 1fr;
+        gap: 0.65rem;
+        padding: 1.25rem;
+        transition: transform 0.2s ease;
+    }
+
+    #publicResultsTable tr:has(td[data-label="Platz"]:contains("1.")) {
+        border-color: rgba(234, 179, 8, 0.4);
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(234, 179, 8, 0.05) 100%);
+        box-shadow: 0 10px 30px -10px rgba(234, 179, 8, 0.2);
+    }
+
+    /* Target first place specifically if :contains is not supported (standard CSS fallback) */
+    #publicResultsTable tr.rank-1 {
+        border-color: rgba(234, 179, 8, 0.5);
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(234, 179, 8, 0.1) 100%);
+    }
+
+    #raceTable tr {
         grid-template-areas:
             "number name"
             "status rank"
             "times times"
             "actions actions";
-        gap: 0.5rem;
-        padding: 1rem;
     }
 
-    #raceTable td {
+    #publicResultsTable tr {
+        grid-template-areas:
+            "number name"
+            "status rank"
+            "dev dev"
+            "tags tags";
+    }
+
+    #raceTable td,
+    #publicResultsTable td {
         padding: 0;
         background: transparent !important;
         border: none !important;
     }
 
     /* Map Data to Grid Areas */
-    #raceTable td[data-label="Startnr."] {
+    #raceTable td[data-label="Startnr."],
+    #publicResultsTable td[data-label="Startnr."] {
         grid-area: number;
         font-size: 1.1rem;
         font-weight: 900;
         color: var(--primary);
     }
 
-    #raceTable td[data-label="Name"] {
+    #raceTable td[data-label="Name"],
+    #publicResultsTable td[data-label="Name"] {
         grid-area: name;
         font-size: 1.1rem;
         font-weight: 600;
@@ -1553,32 +1694,90 @@ input:checked+.switch-slider:before {
         align-items: flex-end;
     }
 
-    /* Move tags to be under name in flex flow if needed, or inline */
-    .tag-badges {
-        justify-content: flex-end;
-    }
-
-    #raceTable td[data-label="Status"] {
+    #raceTable td[data-label="Status"],
+    #publicResultsTable td[data-label="Status"] {
         grid-area: status;
         padding-top: 0.25rem;
     }
 
-    #raceTable td[data-label="Platz"] {
+    /* For public results, if finished, Dauer and Platz share the middle row */
+    #publicResultsTable td[data-label="Dauer"] {
+        grid-area: status;
+        /* Use status area for time if finished */
+        font-family: monospace;
+        font-weight: 700;
+        color: var(--accent-green);
+        display: flex;
+        align-items: center;
+    }
+
+    #publicResultsTable td[data-label="Dauer"]::before {
+        content: "Zeit: ";
+        font-size: 0.7rem;
+        opacity: 0.6;
+        margin-right: 4px;
+    }
+
+    #raceTable td[data-label="Platz"],
+    #publicResultsTable td[data-label="Platz"] {
         grid-area: rank;
         text-align: right;
-        font-size: 1.25rem;
-        font-weight: 800;
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: var(--primary);
+        line-height: 1;
+    }
+
+    #publicResultsTable td[data-label="Platz"] {
         color: var(--text-main);
     }
 
-    /* Combine Times into one block area */
-    #raceTable td[data-label="Startzeit"],
-    #raceTable td[data-label="Endzeit"],
-    #raceTable td[data-label="Dauer"],
-    #raceTable td[data-label="Rückstand"] {
-        /* We can't merge cells in CSS grid easily without extra markup, 
-           so we let them flow or assign specific spots. 
-           Let's create a 'Times' row feel. */
+    #publicResultsTable tr.rank-1 td[data-label="Platz"] {
+        color: #eab308;
+        text-shadow: 0 0 15px rgba(234, 179, 8, 0.4);
+    }
+
+    #publicResultsTable td[data-label="Kategorie"] {
+        grid-area: tags;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 0.75rem !important;
+        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        letter-spacing: 0.02em;
+    }
+
+    #publicResultsTable td[data-label="Abweichung"] {
+        grid-area: dev;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        padding-top: 0.5rem !important;
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    #publicResultsTable td[data-label="Abweichung"]::before {
+        content: "Abw: ";
+        font-size: 0.7rem;
+        opacity: 0.6;
+        margin-right: 4px;
+        font-weight: normal;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    #publicResultsTable td[data-label="Kategorie"]::before {
+        content: "Kategorie: ";
+        opacity: 0.6;
+        margin-right: 4px;
+    }
+
+    /* Race Table Specific Timing Row */
+    #raceTable td[data-label="Startzeit"] {
+        grid-area: times;
+        grid-row: 3;
         font-size: 0.85rem;
         color: var(--text-muted);
         display: flex;
@@ -1589,28 +1788,14 @@ input:checked+.switch-slider:before {
         margin-top: 0.25rem;
     }
 
-    #raceTable td[data-label="Startzeit"] {
-        grid-area: times;
-        grid-row: 3;
-        margin-bottom: 2.5rem;
-    }
-
-    /* Hack: Stack them visually by changing grid rows dynamically or just dump them in one column? 
-       Actually, let's simplify. 
-       Let's put Times in a 2-column sub-grid details view.
-    */
-
-    /* Re-think Grid for Times */
-    #raceTable td[data-label="Startzeit"] {
-        grid-column: 1;
-        grid-row: 3;
-        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-        padding-top: 0.5rem !important;
-    }
-
     #raceTable td[data-label="Endzeit"] {
         grid-column: 1;
         grid-row: 4;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
     #raceTable td[data-label="Dauer"] {
@@ -1621,8 +1806,8 @@ input:checked+.switch-slider:before {
         font-size: 1rem;
         font-weight: 700;
         color: var(--text-main);
-        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
-        padding-top: 0.5rem !important;
+        display: flex;
+        align-items: center;
     }
 
     #raceTable td[data-label="Rückstand"] {
@@ -1630,12 +1815,15 @@ input:checked+.switch-slider:before {
         grid-row: 4;
         text-align: right;
         justify-content: flex-end;
+        display: flex;
+        align-items: center;
+        font-size: 0.85rem;
+        color: var(--accent-red);
     }
 
     /* Actions Row */
     #raceTable td[data-label="Aktionen"] {
-        grid-column: 1 / -1;
-        grid-row: 5;
+        grid-area: actions;
         border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
         padding-top: 0.75rem !important;
         margin-top: 0.5rem;
@@ -1644,7 +1832,7 @@ input:checked+.switch-slider:before {
         gap: 1rem;
     }
 
-    /* Labels for data fields to make them understandable */
+    /* Labels */
     #raceTable td[data-label="Startzeit"]::before {
         content: "Start:";
         margin-right: 0.5rem;
@@ -1665,13 +1853,33 @@ input:checked+.switch-slider:before {
         font-size: 0.8rem;
     }
 
+    #publicResultsTable td[data-label="Status"] .status-badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.6rem;
+    }
+
+    /* If status is the only thing in the middle row, let it be left-aligned */
+    #publicResultsTable td[data-label="Status"] {
+        justify-content: flex-start;
+        display: flex;
+    }
+
+    #publicResultsTable tr:hover {
+        transform: translateY(-2px);
+        background: rgba(30, 41, 59, 0.6);
+    }
+
     /* Hide unneeded labels */
     #raceTable td[data-label="Startnr."]::before,
     #raceTable td[data-label="Name"]::before,
     #raceTable td[data-label="Platz"]::before,
     #raceTable td[data-label="Status"]::before,
     #raceTable td[data-label="Rückstand"]::before,
-    #raceTable td[data-label="Aktionen"]::before {
+    #raceTable td[data-label="Aktionen"]::before,
+    #publicResultsTable td[data-label="Startnr."]::before,
+    #publicResultsTable td[data-label="Name"]::before,
+    #publicResultsTable td[data-label="Platz"]::before,
+    #publicResultsTable td[data-label="Status"]::before {
         display: none;
     }
 
@@ -1697,6 +1905,10 @@ input:checked+.switch-slider:before {
     .reg-header {
         display: table;
 
+    }
+
+    #rankingMethodContainer.public-control-item {
+   
     }
 
 }

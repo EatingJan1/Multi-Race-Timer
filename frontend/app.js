@@ -19,6 +19,8 @@ let signaturePad = null;
 let pdfTextFields = [];
 let isRegistrationPreview = false;
 let isKioskMode = false;
+let publicParticipants = [];
+let publicRaceData = null;
 
 const DEFAULT_COLUMNS = [
     { id: 'number', label: 'STARTNR.', visible: true, required: true, key: 'number' },
@@ -136,7 +138,10 @@ const resultsTitle = document.getElementById('resultsTitle');
 const resultsSubtitle = document.getElementById('resultsSubtitle');
 const publicResultsHeader = document.getElementById('publicResultsHeader');
 const publicResultsBody = document.getElementById('publicResultsBody');
-const backToLandingResultsBtn = document.getElementById('backToLandingResultsBtn');
+const publicTagFilter = document.getElementById('publicTagFilter');
+const rankingMethodContainer = document.getElementById('rankingMethodContainer');
+const rankMethodBest = document.getElementById('rankMethodBest');
+const rankMethodAverage = document.getElementById('rankMethodAverage');
 
 async function init() {
     // Check if we are on a page with the main application UI (index.html)
@@ -154,13 +159,13 @@ async function init() {
             const res = await fetch(`${PUBLIC_BASE}/kiosk/register/${raceName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({'SECKEY': key}),
+                body: JSON.stringify({ 'SECKEY': key }),
                 credentials: 'include'
             });
-            
+
             const race = await res.json();
             settings = race["Race"]["settings"];
-            race_temp = {settings};
+            race_temp = { settings };
             race_temp.name = raceName
 
 
@@ -175,7 +180,7 @@ async function init() {
         }
     }
 
-    
+
     updateSettingsUI();
     const isLoggedIn = await checkAuthStatus();
 
@@ -186,6 +191,12 @@ async function init() {
     }
 
     renderColumnConfig();
+
+    if (publicTagFilter) publicTagFilter.onchange = renderPublicResults;
+    document.getElementsByName('rankingMethod').forEach(r => {
+        r.onchange = renderPublicResults;
+    });
+
     startPolling();
 }
 
@@ -288,61 +299,172 @@ function createRaceCard(race) {
 
 async function showPublicResults(race) {
     hideAllViews();
+    publicRaceData = race;
     currentRace = race.name;
     resultsTitle.textContent = race.name.replace(/_/g, ' ');
     resultsSubtitle.textContent = race.settings.displaytype === 'finished' ? 'Offizielle Endergebnisse' : 'Aktuelle Teilnehmerliste';
 
     if (publicResultsPage) publicResultsPage.style.display = 'block';
 
+    // Reset controls
+    if (publicTagFilter) publicTagFilter.value = "";
+
+    // Check ranking options
+    if (rankingMethodContainer) {
+        const canBest = race.settings.rank_method_best !== false;
+        const canAvg = race.settings.rank_method_average === true;
+
+        if (canBest && canAvg) {
+            rankingMethodContainer.style.display = 'flex';
+        } else {
+            rankingMethodContainer.style.display = 'none';
+        }
+
+        // Force correct radio selection based on available methods
+        if (canAvg && !canBest) {
+            const avgRadio = document.querySelector('input[name="rankingMethod"][value="average"]');
+            if (avgRadio) avgRadio.checked = true;
+        } else {
+            const bestRadio = document.querySelector('input[name="rankingMethod"][value="best"]');
+            if (bestRadio) bestRadio.checked = true;
+        }
+    }
+
     publicResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Lade Daten...</td></tr>';
 
     try {
         const res = await fetch(`${PUBLIC_BASE}/results/${race.name}`);
         if (!res.ok) throw new Error("Fehler beim Laden");
-        const people = await res.json();
+        publicParticipants = await res.json();
 
-        // Sort if finished
-        if (race.settings.displaytype === 'finished') {
-            people.sort((a, b) => {
+        // Fill tag filter
+        const tags = new Set();
+        publicParticipants.forEach(p => p.tags.forEach(t => tags.add(t)));
+        if (publicTagFilter) {
+            const currentVal = publicTagFilter.value;
+            publicTagFilter.innerHTML = '<option value="">Alle Kategorien</option>';
+            Array.from(tags).sort().forEach(t => {
+                const opt = document.createElement('option');
+                opt.value = t;
+                opt.textContent = t;
+                publicTagFilter.appendChild(opt);
+            });
+            publicTagFilter.value = currentVal;
+        }
 
-                if (a.duration && b.duration) return a.duration - b.duration;
+        renderPublicResults();
+
+    } catch (e) {
+        console.error(e);
+        publicResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Daten konnten nicht geladen werden.</td></tr>';
+    }
+}
+
+function renderPublicResults() {
+    if (!publicRaceData || !publicParticipants) return;
+
+    const race = publicRaceData;
+    const selectedTag = publicTagFilter ? publicTagFilter.value : "";
+    const methodRadio = document.querySelector('input[name="rankingMethod"]:checked');
+    const rankingMethod = methodRadio ? methodRadio.value : "best";
+
+    let filtered = publicParticipants.filter(p => !selectedTag || p.tags.includes(selectedTag));
+
+    // Calculate Average for the filtered set if needed
+    const finishedFiltered = filtered.filter(p => p.duration);
+    const avgDuration = finishedFiltered.length > 0
+        ? finishedFiltered.reduce((acc, p) => acc + p.duration, 0) / finishedFiltered.length
+        : 0;
+
+    // Sort
+    if (race.settings.displaytype === 'finished') {
+        if (rankingMethod === 'average' && finishedFiltered.length > 0) {
+            filtered.sort((a, b) => {
+                if (a.duration && b.duration) return Math.abs(a.duration - avgDuration) - Math.abs(b.duration - avgDuration);
                 if (a.duration) return -1;
                 if (b.duration) return 1;
                 return 0;
             });
         } else {
-            people.sort((a, b) => a.start_number - b.start_number);
+            filtered.sort((a, b) => {
+                if (a.duration && b.duration) return a.duration - b.duration;
+                if (a.duration) return -1;
+                if (b.duration) return 1;
+                return 0;
+            });
         }
+    } else {
+        filtered.sort((a, b) => a.start_number - b.start_number);
+    }
 
-        // Header
-        let headerHtml = `<th>#</th><th>Name</th><th>Kategorie</th>`;
-        if (race.settings.displaytype === 'finished') headerHtml += `<th>Zeit</th><th>Platz</th>`;
-        else headerHtml += `<th>Status</th>`;
-        publicResultsHeader.innerHTML = headerHtml;
+    // Header
+    let headerHtml = `<th>#</th><th>Name</th><th>Kategorie</th>`;
+    if (race.settings.displaytype === 'finished') {
+        headerHtml += `<th>Zeit</th>`;
+        if (rankingMethod === 'average') headerHtml += `<th>Abw.</th>`;
+        headerHtml += `<th>Platz</th>`;
+    } else {
+        headerHtml += `<th>Status</th>`;
+    }
+    publicResultsHeader.innerHTML = headerHtml;
 
-        // Body
-        publicResultsBody.innerHTML = '';
-        people.forEach((p, i) => {
-            const tr = document.createElement('tr');
-            let timeStr = p.duration ? p.duration.toFixed(3) + 's' : '-';
-            let statusStr = p.end_time ? 'Fertig' : (p.start_time ? 'Unterwegs' : 'Bereit');
+    // Body
+    publicResultsBody.innerHTML = '';
 
-            let html = `<td>${p.start_number}</td><td>${p.name}</td><td>${p.tags.join(', ')}</td>`;
-            if (race.settings.displaytype === 'finished') {
-                html += `<td>${timeStr}</td><td>${i + 1}.</td>`;
+    // Rank calculation
+    if (race.settings.displaytype === 'finished') {
+        filtered.forEach((p, i) => {
+            if (p.duration) {
+                let currentVal = p.duration;
+                let prevVal = i > 0 ? filtered[i - 1].duration : null;
+
+                if (rankingMethod === 'average') {
+                    currentVal = Math.abs(p.duration - avgDuration);
+                    prevVal = i > 0 ? Math.abs(filtered[i - 1].duration - avgDuration) : null;
+                }
+
+                if (i > 0 && currentVal === prevVal) {
+                    p.rank = filtered[i - 1].rank;
+                } else {
+                    p.rank = i + 1;
+                }
             } else {
-                html += `<td>${statusStr}</td>`;
+                p.rank = '-';
             }
-            tr.innerHTML = html;
-            publicResultsBody.appendChild(tr);
         });
+    }
 
-        if (people.length === 0) {
-            publicResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Noch keine Teilnehmer angemeldet.</td></tr>';
+    filtered.forEach((p) => {
+        const tr = document.createElement('tr');
+        if (race.settings.displaytype === 'finished' && p.rank === 1) {
+            tr.classList.add('rank-1');
         }
 
-    } catch (e) {
-        publicResultsBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Daten konnten nicht geladen werden.</td></tr>';
+        let timeStr = p.duration ? p.duration.toFixed(3) + 's' : '-';
+
+        let statusStr = '';
+        if (p.end_time) statusStr = '<span class="status-badge status-finished">Fertig</span>';
+        else if (p.start_time) statusStr = '<span class="status-badge status-running">Unterwegs</span>';
+        else statusStr = '<span class="status-badge status-ready">Bereit</span>';
+
+        let html = `<td data-label="Startnr.">${p.start_number}</td><td data-label="Name">${p.name}</td><td data-label="Kategorie">${p.tags.join(', ')}</td>`;
+        if (race.settings.displaytype === 'finished') {
+            html += `<td data-label="Dauer">${timeStr}</td>`;
+            if (rankingMethod === 'average') {
+                const diff = p.duration ? (p.duration - avgDuration).toFixed(3) : '-';
+                const color = p.duration ? (p.duration > avgDuration ? 'var(--accent-red)' : 'var(--accent-green)') : 'inherit';
+                html += `<td data-label="Abweichung" style="color:${color}; font-family: monospace; font-weight:700;">${p.duration ? (diff > 0 ? '+' : '') + diff + 's' : '-'}</td>`;
+            }
+            html += `<td data-label="Platz">${p.rank}${p.rank !== '-' ? '.' : ''}</td>`;
+        } else {
+            html += `<td data-label="Status">${statusStr}</td>`;
+        }
+        tr.innerHTML = html;
+        publicResultsBody.appendChild(tr);
+    });
+
+    if (filtered.length === 0) {
+        publicResultsBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 2rem;">${publicParticipants.length === 0 ? 'Noch keine Teilnehmer angemeldet.' : 'Keine Teilnehmer in dieser Kategorie.'}</td></tr>`;
     }
 }
 
@@ -578,6 +700,9 @@ function updateSettingsUI() {
     if (startNumMinInput) startNumMinInput.value = currentRaceSettings.start_num_min || '';
     if (startNumMaxInput) startNumMaxInput.value = currentRaceSettings.start_num_max || '';
 
+    if (rankMethodBest) rankMethodBest.checked = currentRaceSettings.rank_method_best !== false;
+    if (rankMethodAverage) rankMethodAverage.checked = !!currentRaceSettings.rank_method_average;
+
     renderFormDesigner(currentRaceSettings.form_config || []);
 
     renderTable();
@@ -706,6 +831,9 @@ async function saveRaceSettings() {
     if (parseInt(startNumMaxInput.value)) {
         settingsToSend.start_num_max = parseInt(startNumMaxInput.value);
     }
+
+    if (rankMethodBest) settingsToSend.rank_method_best = rankMethodBest.checked;
+    if (rankMethodAverage) settingsToSend.rank_method_average = rankMethodAverage.checked;
 
     await apiCall(`/${currentRace}/settings`, 'POST', settingsToSend);
 }
@@ -1625,10 +1753,10 @@ if (startKioskBnt) {
 
             const res = await apiCall(`/${currentRace}/genkey`, 'GET');
             const key = res["key"];
-            
+
             const url = `${window.location.origin}${window.location.pathname}?k=${hash}&y=${key}`;
-            
-            
+
+
             open(url, '_blank');
             //open(url, '_blank', );
         } catch (err) {

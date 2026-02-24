@@ -127,6 +127,28 @@
             </div>
         </header>
 
+        <div class="public-controls">
+            <select id="publicTagFilter" class="public-control-item">
+                <option value="">Alle Kategorien</option>
+            </select>
+
+            <div id="rankingMethodContainer" class="public-control-item" style="display: none;">
+                <label>Wertung:</label>
+                <div class="radio-group-inner">
+                    <label class="check-container" style="margin: 0;">
+                        Bestzeit
+                        <input type="radio" name="rankingMethod" value="best" checked>
+                        <span class="checkmark"></span>
+                    </label>
+                    <label class="check-container" style="margin: 0;">
+                        Durchschnitt
+                        <input type="radio" name="rankingMethod" value="average">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
         <main class="landing-content">
             <div class="card">
                 <div class="table-container">
@@ -302,6 +324,16 @@
                         <option value="hidden">Ausgeblendet</option>
                         <option value="finished">Beendet</option>
                     </select>
+                </div>
+
+                <div class="setting-item">
+                    <label>Ranking Methoden (Public):</label>
+                    <div class="checkbox-group" style="display: flex; gap: 1.5rem; margin-top: 0.5rem;">
+                        <label class="check-container"> Bestzeit <input type="checkbox" id="rankMethodBest" checked>
+                            <span class="checkmark"></span></label>
+                        <label class="check-container"> Durchschnitt <input type="checkbox" id="rankMethodAverage">
+                            <span class="checkmark"></span></label>
+                    </div>
                 </div>
                 <div class="setting-item flex-between"
                     style="background: rgba(var(--accent-blue-rgb), 0.1); padding: 10px; border-radius: 12px; border: 1px solid var(--accent-blue);">
@@ -576,8 +608,10 @@
                 <span id="appVersion">Version: --</span>
             </div>
             <div class="footer-content footer-links">
-                <a href="https://github.com/EatingJan1/Multi-Race-Timer/wiki" style="color: inherit; text-decoration: none; opacity: 0.8;">WIKI</a>
-                <a href="https://github.com/EatingJan1/Multi-Race-Timer/issues" style="color: inherit; text-decoration: none; opacity: 0.8;">Report Bugs</a>
+                <a href="https://github.com/EatingJan1/Multi-Race-Timer/wiki"
+                    style="color: inherit; text-decoration: none; opacity: 0.8;">WIKI</a>
+                <a href="https://github.com/EatingJan1/Multi-Race-Timer/issues"
+                    style="color: inherit; text-decoration: none; opacity: 0.8;">Report Bugs</a>
             </div>
         </div>
     </footer>
