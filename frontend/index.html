@@ -106,6 +106,7 @@
                         <button id="clearSignatureBtn" class="btn btn-outline tiny">Löschen</button>
                     </div>
                 </div>
+                <div id="dynamicFormFooter" class="a4-designer-footer" style="display:none; position: absolute;"></div>
             </div>
 
             <div style="max-width: 210mm; margin: 20px auto; padding: 0 20px;">
@@ -356,13 +357,8 @@
 
                 <div class="setting-item">
                     <label>Anmeldeformular Designer:</label>
-                    <div id="formDesignerContainer" class="form-designer">
-                        <div id="formFieldsList" class="form-fields-list">
-                            <!-- Fields will be added here -->
-                        </div>
-                        <button id="addFieldBtn" class="btn btn-outline tiny" style="margin-top: 10px;">+ Feld
-                            hinzufügen</button>
-                    </div>
+                    <button id="openFormDesignerBtn" class="btn btn-primary" style="width: 100%;">Designer
+                        öffnen</button>
                 </div>
 
                 <div class="divider"></div>
@@ -585,6 +581,200 @@
             </thead>
             <tbody id="printBody"></tbody>
         </table>
+    </div>
+
+    <!-- Form Designer Modal -->
+    <div id="formDesignerModal" class="modal">
+        <div class="modal-content designer-modal-content card">
+            <div class="designer-header">
+                <h2>Anmeldeformular Designer</h2>
+                <div class="designer-actions">
+                    <button id="closeFormDesigner" class="btn btn-outline">Abbrechen</button>
+                    <button id="saveFormDesigner" class="btn btn-primary">Speichern</button>
+                </div>
+            </div>
+
+            <div class="designer-toolbar">
+                <div class="toolbar-group">
+                    <button type="button" class="tool-btn" data-command="bold" title="Fett">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+                            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-btn" data-command="italic" title="Kursiv">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <line x1="19" y1="4" x2="10" y2="4" />
+                            <line x1="14" y1="20" x2="5" y2="20" />
+                            <line x1="15" y1="4" x2="9" y2="20" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-btn" data-command="underline" title="Unterstrichen">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
+                            <line x1="4" y1="21" x2="20" y2="21" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group">
+                    <button type="button" class="tool-btn" data-command="justifyLeft" title="Links">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="17" y1="10" x2="3" y2="10" />
+                            <line x1="21" y1="6" x2="3" y2="6" />
+                            <line x1="21" y1="14" x2="3" y2="14" />
+                            <line x1="17" y1="18" x2="3" y2="18" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-btn" data-command="justifyCenter" title="Zentriert">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="10" x2="6" y2="10" />
+                            <line x1="21" y1="6" x2="3" y2="6" />
+                            <line x1="21" y1="14" x2="3" y2="14" />
+                            <line x1="18" y1="18" x2="6" y2="18" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-btn" data-command="justifyRight" title="Rechts">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="21" y1="10" x2="7" y2="10" />
+                            <line x1="21" y1="6" x2="3" y2="6" />
+                            <line x1="21" y1="14" x2="3" y2="14" />
+                            <line x1="21" y1="18" x2="7" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group">
+                    <button type="button" class="tool-btn" data-command="insertUnorderedList" title="Aufzählung">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6" />
+                            <line x1="8" y1="12" x2="21" y2="12" />
+                            <line x1="8" y1="18" x2="21" y2="18" />
+                            <line x1="3" y1="6" x2="3.01" y2="6" />
+                            <line x1="3" y1="12" x2="3.01" y2="12" />
+                            <line x1="3" y1="18" x2="3.01" y2="18" />
+                        </svg>
+                    </button>
+                    <button type="button" class="tool-btn" data-command="insertOrderedList" title="Nummerierung">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="10" y1="6" x2="21" y2="6" />
+                            <line x1="10" y1="12" x2="21" y2="12" />
+                            <line x1="10" y1="18" x2="21" y2="18" />
+                            <path d="M4 6h1v4" />
+                            <path d="M4 10h2" />
+                            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="toolbar-group">
+                    <select id="fontFamilySelect" class="toolbar-select" title="Schriftart">
+                        <option value="Helvetica, Arial, sans-serif">Helvetica</option>
+                        <option value="'Times New Roman', serif">Times</option>
+                        <option value="'Courier New', monospace">Courier</option>
+                    </select>
+                    <select id="fontSizeSelect" class="toolbar-select" title="Größe">
+                        <option value="1">Klein</option>
+                        <option value="3" selected>Standard</option>
+                        <option value="5">Groß</option>
+                        <option value="7">Riesig</option>
+                    </select>
+                    <input type="color" id="textColorPicker" class="toolbar-color" title="Textfarbe" value="#000000">
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group dropdown-container">
+                    <button type="button" class="tool-btn dropdown-trigger">
+                        <span>Variablen</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="margin-left:5px;">
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                    </button>
+                    <div class="insert-dropdown-content card">
+                        <button type="button" class="dropdown-item placeholder-btn" data-value="[DATUM]">Datum</button>
+                        <button type="button" class="dropdown-item placeholder-btn"
+                            data-value="[EVENT]">Event-Name</button>
+                        <button type="button" class="dropdown-item placeholder-btn" data-value="[ZEIT]">Uhrzeit</button>
+                    </div>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group dropdown-container">
+                    <button type="button" class="tool-btn dropdown-trigger">
+                        <span>Formular</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="margin-left:5px;">
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                    </button>
+                    <div class="insert-dropdown-content card">
+                        <button type="button" class="dropdown-item insert-btn" data-type="text">Eingabefeld</button>
+                        <button type="button" class="dropdown-item insert-btn" data-type="select">Auswahlliste</button>
+                        <button type="button" class="dropdown-item insert-btn"
+                            data-type="signature">Unterschrift</button>
+                    </div>
+                </div>
+
+                <div class="toolbar-group dropdown-container">
+                    <button type="button" class="tool-btn dropdown-trigger">
+                        <span>Einfügen</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" style="margin-left:5px;">
+                            <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                    </button>
+                    <div class="insert-dropdown-content card">
+                        <button type="button" class="dropdown-item insert-btn" data-type="line">Horiz. Linie</button>
+                        <button type="button" class="dropdown-item insert-btn" data-type="logo">Logo / Bild</button>
+                    </div>
+                </div>
+
+                <div class="toolbar-divider"></div>
+
+                <div class="toolbar-group">
+                    <button type="button" id="toggleFooterBtn" class="tool-btn" title="Footer bearbeiten">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <rect x="3" y="15" width="18" height="6" rx="2" />
+                        </svg>
+                        <span style="font-size: 11px; margin-left: 5px;">Footer</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="designer-workspace">
+                <div id="designerPageWrapper" class="a4-page-designer">
+                    <div id="designerContent" contenteditable="true" style="min-height: 250mm; outline:none;">
+                        <!-- Editor content -->
+                    </div>
+                    <div id="designerFooter" class="a4-designer-footer" contenteditable="true" style="display:none;">
+                        [DATUM] [EVENT] [ZEIT]
+                    </div>
+                </div>
+            </div>
+
+            <div id="designerContextMenu" class="card"
+                style="display:none; position:fixed; z-index:2000; padding:5px; min-width:150px; box-shadow:0 5px 20px rgba(0,0,0,0.5);">
+                <!-- Dynamic items -->
+            </div>
+
+            <input type="file" id="designerLogoUpload" style="display:none;" accept="image/*">
+        </div>
     </div>
 
     <!-- Liquid Glass SVG Filter -->

@@ -143,6 +143,31 @@ const rankingMethodContainer = document.getElementById('rankingMethodContainer')
 const rankMethodBest = document.getElementById('rankMethodBest');
 const rankMethodAverage = document.getElementById('rankMethodAverage');
 
+// Form Designer Elements
+const formDesignerModal = document.getElementById('formDesignerModal');
+const openFormDesignerBtn = document.getElementById('openFormDesignerBtn');
+const closeFormDesigner = document.getElementById('closeFormDesigner');
+const saveFormDesigner = document.getElementById('saveFormDesigner');
+const designerContent = document.getElementById('designerContent');
+const designerFooter = document.getElementById('designerFooter');
+const toggleFooterBtn = document.getElementById('toggleFooterBtn');
+const designerLogoUpload = document.getElementById('designerLogoUpload');
+
+// Block Print Command (Command + P)
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'p' || e.keyCode === 80)) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        console.log("Print command blocked.");
+        return false;
+    }
+}, true);
+
+window.onbeforeprint = (e) => {
+    e.preventDefault();
+    return false;
+};
+
 async function init() {
     // Check if we are on a page with the main application UI (index.html)
     // If not, we stop here to avoid errors looking for non-existent elements.
@@ -197,7 +222,330 @@ async function init() {
         r.onchange = renderPublicResults;
     });
 
+    if (openFormDesignerBtn) {
+        openFormDesignerBtn.onclick = () => {
+            try {
+                let config = currentRaceSettings.form_config || {};
+                if (typeof config === 'string') {
+                    config = { content: config, footer: "", footerEnabled: false };
+                }
+                designerContent.innerHTML = config.content || "";
+                designerFooter.innerHTML = config.footer || "";
+                designerFooter.style.display = config.footerEnabled ? 'block' : 'none';
+                formDesignerModal.classList.add('active');
+                formDesignerModal.style.display = 'flex';
+
+                // Initialize draggable listeners for any existing logos
+                setTimeout(() => {
+                    designerContent.querySelectorAll('.draggable-logo').forEach(makeLogoDraggable);
+                    // Selection listener for non-draggable items (signatures)
+                    designerContent.querySelectorAll('.form-signature-block').forEach(addSelectionListener);
+                }, 100);
+            } catch (err) {
+                console.error("Error opening designer:", err);
+            }
+        };
+    }
+
+    function addSelectionListener(el) {
+        el.addEventListener('mousedown', (e) => {
+            designerContent.querySelectorAll('.selected-item').forEach(s => s.classList.remove('selected-item'));
+            el.classList.add('selected-item');
+            designerContent.focus();
+            // Removed stopPropagation to allow drag logic on logos
+        });
+    }
+
+    if (closeFormDesigner) closeFormDesigner.onclick = () => {
+        formDesignerModal.classList.remove('active');
+        formDesignerModal.style.display = 'none';
+    };
+
+    if (saveFormDesigner) saveFormDesigner.onclick = async () => {
+        currentRaceSettings.form_config = {
+            content: designerContent.innerHTML,
+            footer: designerFooter.innerHTML,
+            footerEnabled: designerFooter.style.display !== 'none'
+        };
+        await saveRaceSettings();
+        formDesignerModal.classList.remove('active');
+        formDesignerModal.style.display = 'none';
+        alert("Formular gespeichert!");
+    };
+
+    if (toggleFooterBtn) toggleFooterBtn.onclick = () => {
+        designerFooter.style.display = designerFooter.style.display === 'none' ? 'block' : 'none';
+    };
+
+    if (designerLogoUpload) designerLogoUpload.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            insertDraggableLogo(ev.target.result);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // Designer Toolbar logic - Bold, Italic, etc.
+    document.querySelectorAll('.tool-btn[data-command]').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            const command = btn.dataset.command;
+
+            // Smart select word if no character is selected
+            smartWordSelection();
+
+            document.execCommand(command, false, null);
+            designerContent.focus();
+        };
+    });
+
+    // Font, Size, Color
+    const fontSelect = document.getElementById('fontFamilySelect');
+    if (fontSelect) fontSelect.onchange = () => {
+        smartWordSelection();
+        document.execCommand('fontName', false, fontSelect.value);
+    };
+
+    const sizeSelect = document.getElementById('fontSizeSelect');
+    if (sizeSelect) sizeSelect.onchange = () => {
+        smartWordSelection();
+        document.execCommand('fontSize', false, sizeSelect.value);
+    };
+
+    const colorPicker = document.getElementById('textColorPicker');
+    if (colorPicker) colorPicker.oninput = () => {
+        smartWordSelection();
+        document.execCommand('foreColor', false, colorPicker.value);
+    };
+
+    // Tab key handling and Deletion via key
+    designerContent.onkeydown = (e) => {
+        if (e.key === 'Tab') {
+            e.preventDefault();
+            document.execCommand('insertHTML', false, '&nbsp;&nbsp;&nbsp;&nbsp;');
+        } else if (e.key === 'Delete' || e.key === 'Backspace') {
+            const selected = designerContent.querySelector('.selected-item');
+            // If we have a selected atomic item (logo/signature), delete it
+            if (selected) {
+                e.preventDefault();
+                selected.remove();
+            }
+        }
+    };
+
+    // Placeholder buttons
+    document.querySelectorAll('.placeholder-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            const val = btn.dataset.value;
+            designerContent.focus();
+            document.execCommand('insertText', false, val);
+        };
+    });
+
+    designerContent.onclick = (e) => {
+        if (!e.target.closest('.selected-item')) {
+            designerContent.querySelectorAll('.selected-item').forEach(s => s.classList.remove('selected-item'));
+        }
+    };
+
+    // Global Context Menu handling
+    designerContent.oncontextmenu = (e) => {
+        const target = e.target.closest('.draggable-logo, .form-line, .form-signature-block');
+        if (target) {
+            e.preventDefault();
+            showDesignerContextMenu(e.pageX, e.pageY, target);
+        }
+    };
+
+    document.addEventListener('click', () => {
+        const cm = document.getElementById('designerContextMenu');
+        if (cm) cm.style.display = 'none';
+    });
+
+    function smartWordSelection() {
+        const selection = window.getSelection();
+        if (selection.rangeCount > 0 && selection.isCollapsed) {
+            const range = selection.getRangeAt(0);
+            const node = range.startContainer;
+            if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.textContent;
+                let start = range.startOffset;
+                let end = range.startOffset;
+
+                while (start > 0 && /\w/.test(text[start - 1])) start--;
+                while (end < text.length && /\w/.test(text[end])) end++;
+
+                if (start !== end) {
+                    const newRange = document.createRange();
+                    newRange.setStart(node, start);
+                    newRange.setEnd(node, end);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                }
+            }
+        }
+    }
+
+    document.querySelectorAll('.insert-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.preventDefault();
+            const type = btn.dataset.type;
+            insertDesignerElement(type);
+        };
+    });
+
     startPolling();
+}
+
+function insertDesignerElement(type) {
+    designerContent.focus();
+    let html = "";
+    if (type === 'text') {
+        const label = prompt("Feld-Name (z.B. Verein):", "Neues Feld");
+        if (!label) return;
+        html = `<span class="designer-field-helper">[</span><input type="text" class="form-input-inline" data-field-name="${label}" placeholder="${label}"><span class="designer-field-helper">]</span>&nbsp;`;
+        document.execCommand('insertHTML', false, html);
+    } else if (type === 'select') {
+        const label = prompt("Name der Auswahl:", "Optionen");
+        const options = prompt("Optionen (kommagetrennt):", "Ja, Kein");
+        if (!label || !options) return;
+        const optsHtml = options.split(',').map(o => `<option>${o.trim()}</option>`).join('');
+        html = `<span class="designer-field-helper">[</span><select class="form-select-inline" data-field-name="${label}">${optsHtml}</select><span class="designer-field-helper">]</span>&nbsp;`;
+        document.execCommand('insertHTML', false, html);
+    } else if (type === 'line') {
+        html = '<div class="form-line" contenteditable="false"></div>';
+        document.execCommand('insertHTML', false, html);
+        // Add listener to new line for selection
+        setTimeout(() => {
+            const lines = designerContent.querySelectorAll('.form-line');
+            addSelectionListener(lines[lines.length - 1]);
+        }, 50);
+    } else if (type === 'logo') {
+        designerLogoUpload.click();
+    } else if (type === 'signature') {
+        html = `<div class="form-signature-block" contenteditable="false" style="margin-top: 20px;">
+                    <div class="form-signature-box"></div>
+                    <div class="form-signature-label">Unterschrift Teilnehmer</div>
+                </div>`;
+        document.execCommand('insertHTML', false, html);
+        // Add listener to new signature for selection
+        setTimeout(() => {
+            const sigs = designerContent.querySelectorAll('.form-signature-block');
+            addSelectionListener(sigs[sigs.length - 1]);
+        }, 50);
+    }
+}
+
+function showDesignerContextMenu(x, y, target) {
+    const cm = document.getElementById('designerContextMenu');
+    cm.innerHTML = '';
+    cm.style.display = 'block';
+    cm.style.left = x + 'px';
+    cm.style.top = y + 'px';
+
+    if (target.classList.contains('draggable-logo')) {
+        addCMItem("Bild löschen", () => target.remove(), "danger");
+    } else if (target.classList.contains('form-line')) {
+        addCMItem("Linie löschen", () => target.remove(), "danger");
+        addCMItem("Farbe ändern", () => {
+            const color = prompt("Strichfarbe (Hex oder Name):", "#000");
+            if (color) target.style.backgroundColor = color;
+        });
+        addCMItem("Stil: Gepunktet", () => {
+            target.style.height = "1px";
+            target.style.backgroundColor = "transparent";
+            target.style.borderBottom = "2px dotted #000";
+        });
+        addCMItem("Stil: Durchgezogen", () => {
+            target.style.height = "2px";
+            target.style.borderBottom = "none";
+            target.style.backgroundColor = "#000";
+        });
+    } else if (target.classList.contains('form-signature-block')) {
+        addCMItem("Unterschrift löschen", () => target.remove(), "danger");
+    }
+
+    function addCMItem(text, action, type = "") {
+        const item = document.createElement('div');
+        item.className = 'context-item ' + type;
+        item.textContent = text;
+        item.onclick = () => {
+            action();
+            cm.style.display = 'none';
+        };
+        cm.appendChild(item);
+    }
+}
+
+function insertDraggableLogo(src) {
+    const id = 'logo_' + Date.now();
+    const div = document.createElement('div');
+    div.className = 'draggable-logo';
+    div.id = id;
+    div.style.left = '50px';
+    div.style.top = '100px';
+    div.style.width = '100px';
+    div.setAttribute('contenteditable', 'false');
+
+    div.innerHTML = `
+        <img src="${src}">
+        <div class="resize-handle"></div>
+    `;
+
+    designerContent.appendChild(div);
+    makeLogoDraggable(div);
+}
+
+function makeLogoDraggable(el) {
+    let isDragging = false;
+    let isResizing = false;
+    let startX, startY, startWidth, startLeft, startTop;
+
+    el.onmousedown = (e) => {
+        // Prevent text selection on drag/resize, but allow it elsewhere
+        if (e.target.classList.contains('resize-handle') || e.target === el) {
+            e.preventDefault();
+        }
+
+        // Selection handling
+        designerContent.querySelectorAll('.selected-item').forEach(s => s.classList.remove('selected-item'));
+        el.classList.add('selected-item');
+        designerContent.focus();
+
+        if (e.target.classList.contains('resize-handle')) {
+            isResizing = true;
+        } else {
+            isDragging = true;
+        }
+
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = el.offsetWidth;
+        startLeft = el.offsetLeft;
+        startTop = el.offsetTop;
+
+        document.onmousemove = (me) => {
+            if (isDragging) {
+                el.style.left = (startLeft + me.clientX - startX) + 'px';
+                el.style.top = (startTop + me.clientY - startY) + 'px';
+            } else if (isResizing) {
+                el.style.width = (startWidth + me.clientX - startX) + 'px';
+            }
+        };
+
+        document.onmouseup = () => {
+            isDragging = false;
+            isResizing = false;
+            document.onmousemove = null;
+            document.onmouseup = null;
+        };
+
+        // Prevent default only if intentionally dragging/resizing
+        // but we need selection to work, so we don't preventDefault here
+    };
 }
 
 function hideAllViews() {
@@ -485,82 +833,106 @@ async function openRegistration(race, isPreview = false, isKiosk = false) {
         window.history.pushState(null, null, window.location.href);
         window.onpopstate = () => window.history.go(1);
     }
+
+    // Hide header if kiosk
+    const regHeader = document.querySelector('.a4-header');
+    if (regHeader) regHeader.style.display = isKiosk ? 'none' : 'block';
+
     if (regA4Title) regA4Title.textContent = race.name.replace(/_/g, ' ');
     if (registrationPage) registrationPage.style.display = 'block';
 
-    // Render the dynamic form from config in A4 look
-    renderDynamicForm(currentRaceSettings.form_config || []);
+    // Render the dynamic form from config (HTML string)
+    renderDynamicForm(currentRaceSettings.form_config);
 
     // Handle Preview Mode
-    if (isPreview) {
-        submitRegistrationBtn.textContent = "VORSCHAU-MODUS (Kein Absenden)";
-        submitRegistrationBtn.disabled = true;
-        submitRegistrationBtn.style.opacity = "0.5";
-    } else {
-        submitRegistrationBtn.textContent = "JETZT REGESTRIEREN";
-        submitRegistrationBtn.disabled = false;
-        submitRegistrationBtn.style.opacity = "1";
+    if (submitRegistrationBtn) {
+        if (isPreview) {
+            submitRegistrationBtn.textContent = "VORSCHAU-MODUS (Kein Absenden)";
+            submitRegistrationBtn.disabled = true;
+            submitRegistrationBtn.style.opacity = "0.5";
+        } else {
+            submitRegistrationBtn.textContent = "JETZT REGISTRIEREN";
+            submitRegistrationBtn.disabled = false;
+            submitRegistrationBtn.style.opacity = "1";
+        }
     }
 
     // Init Signature Pad
     const canvas = document.getElementById('signaturePad');
-    signaturePad = new SignaturePad(canvas);
+    if (canvas) {
+        signaturePad = new SignaturePad(canvas, {
+            backgroundColor: 'rgba(255, 255, 255, 0)',
+            penColor: 'rgb(0, 0, 0)'
+        });
 
-    const resizeSignatureCanvas = () => {
-        const ratio = Math.max(window.devicePixelRatio || 1, 1);
-        canvas.width = canvas.offsetWidth * ratio;
-        canvas.height = canvas.offsetHeight * ratio;
-        canvas.getContext("2d").scale(ratio, ratio);
-        if (signaturePad) signaturePad.clear();
-    };
-    window.addEventListener("resize", resizeSignatureCanvas);
-    resizeSignatureCanvas();
+        const resizeSignatureCanvas = () => {
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+            if (signaturePad) signaturePad.clear();
+        };
+        window.addEventListener("resize", resizeSignatureCanvas);
+        resizeSignatureCanvas();
+    }
 }
 
 function renderDynamicForm(config) {
-    dynamicFormContainer.innerHTML = '';
+    if (!config) {
+        dynamicFormContainer.innerHTML = '<p style="color: #666; font-style: italic;">Kein Formular konfiguriert.</p>';
+        return;
+    }
 
-    config.forEach(field => {
-        if (field.type === 'paragraph') {
-            const p = document.createElement('span'); // Changed to span for better inline flow
-            p.className = 'a4-text-block';
-            p.textContent = field.label;
-            dynamicFormContainer.appendChild(p);
+    const content = typeof config === 'string' ? config : (config.content || "");
+    const footer = typeof config === 'string' ? "" : (config.footer || "");
+    const footerEnabled = typeof config === 'string' ? false : !!config.footerEnabled;
+
+    // Helper for placeholders
+    const replaceAllPlaceholders = (text) => {
+        const now = new Date();
+        let p = text;
+        p = p.replace(/\[DATUM\]/g, now.toLocaleDateString());
+        p = p.replace(/\[ZEIT\]/g, now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        p = p.replace(/\[EVENT\]/g, currentRace.replace(/_/g, ' '));
+        return p;
+    };
+
+    // Render content with placeholders
+    dynamicFormContainer.innerHTML = replaceAllPlaceholders(content);
+
+    // Render footer
+    const footerEl = document.getElementById('dynamicFormFooter');
+    if (footerEl) {
+        if (footerEnabled && footer) {
+            footerEl.innerHTML = replaceAllPlaceholders(footer);
+            footerEl.style.display = 'block';
         } else {
-            const group = document.createElement('span'); // Changed to span
-            group.className = 'a4-form-field';
-
-            const label = document.createElement('label');
-            label.className = 'a4-label';
-            label.textContent = field.label;
-            group.appendChild(label);
-
-            let input;
-            if (field.type === 'select') {
-                input = document.createElement('select');
-                input.className = 'a4-input';
-                const options = field.options ? field.options.split(',') : [];
-                options.forEach(opt => {
-                    const o = document.createElement('option');
-                    o.value = opt.trim();
-                    o.textContent = opt.trim();
-                    input.appendChild(o);
-                });
-            } else {
-                input = document.createElement('input');
-                input.type = 'text';
-                input.className = 'a4-input';
-                input.placeholder = '';
-            }
-
-            input.id = `field_${field.id}`;
-            input.dataset.name = field.label;
-            input.required = true;
-
-            group.appendChild(input);
-            dynamicFormContainer.appendChild(group);
+            footerEl.style.display = 'none';
         }
-    });
+    }
+
+    // Handle signatures
+    const sigPlaceholders = dynamicFormContainer.querySelectorAll('.form-signature-block');
+    const sigSection = document.querySelector('.signature-section');
+
+    if (sigPlaceholders.length > 0) {
+        sigPlaceholders.forEach((block, idx) => {
+            const targetBox = block.querySelector('.form-signature-box');
+            if (targetBox && idx === 0) { // Move real pad to first placeholder
+                if (sigSection) {
+                    targetBox.appendChild(sigSection);
+                    sigSection.style.marginTop = "0";
+                    sigSection.style.display = "block";
+                }
+            } else if (targetBox) {
+                targetBox.innerHTML = '<div style="height:100%; border:1px solid #ccc; background:#f9f9f9; display:flex; align-items:center; justify-content:center; font-size:10px; color:#999;">Unterschrift Feld</div>';
+            }
+        });
+    } else if (sigSection) {
+        // If no signature block in designer, move it BACK to its original spot after dynamicFormContainer
+        dynamicFormContainer.after(sigSection);
+        sigSection.style.display = "block";
+    }
 }
 
 async function loadPdfTemplate(raceName) {
@@ -703,106 +1075,10 @@ function updateSettingsUI() {
     if (rankMethodBest) rankMethodBest.checked = currentRaceSettings.rank_method_best !== false;
     if (rankMethodAverage) rankMethodAverage.checked = !!currentRaceSettings.rank_method_average;
 
-    renderFormDesigner(currentRaceSettings.form_config || []);
-
     renderTable();
 }
 
-function renderFormDesigner(config) {
-    if (!formFieldsList) return;
-    formFieldsList.innerHTML = '';
-    config.forEach((field, index) => {
-        const item = document.createElement('div');
-        item.className = 'form-field-item';
-        item.draggable = true;
-        item.dataset.index = index;
 
-        // Drag Events
-        item.ondragstart = (e) => {
-            e.dataTransfer.setData('text/plain', index);
-            item.classList.add('dragging');
-        };
-        item.ondragover = (e) => e.preventDefault();
-        item.ondrop = (e) => {
-            e.preventDefault();
-            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-            const toIndex = index;
-            if (fromIndex !== toIndex) {
-                const moved = currentRaceSettings.form_config.splice(fromIndex, 1)[0];
-                currentRaceSettings.form_config.splice(toIndex, 0, moved);
-                saveRaceSettings();
-                renderFormDesigner(currentRaceSettings.form_config);
-            }
-        };
-        item.ondragend = () => item.classList.remove('dragging');
-
-        const topRow = document.createElement('div');
-        topRow.style.display = 'flex';
-        topRow.style.gap = '5px';
-        topRow.style.alignItems = 'center';
-        topRow.innerHTML = `
-            <div class="drag-handle">☰</div>
-            <select onchange="updateFormField(${index}, 'type', this.value)" style="width: 80px; font-size: 0.8rem;">
-                <option value="text" ${field.type === 'text' ? 'selected' : ''}>Eingabe</option>
-                <option value="select" ${field.type === 'select' ? 'selected' : ''}>Liste</option>
-                <option value="paragraph" ${field.type === 'paragraph' ? 'selected' : ''}>Text</option>
-            </select>
-            <input type="text" placeholder="${field.type === 'paragraph' ? 'Inhalt...' : ''}" 
-                value="${field.label}" onchange="updateFormField(${index}, 'label', this.value)" style="flex-grow: 1;">
-            <button class="btn btn-outline tiny" onclick="removeFormField(${index})">×</button>
-        `;
-
-        item.appendChild(topRow);
-
-        if (field.type === 'select') {
-            const optRow = document.createElement('div');
-            optRow.style.marginTop = '5px';
-            optRow.innerHTML = `<input type="text" placeholder="Optionen (Kat A, Kat B...)" 
-                value="${field.options || ''}" onchange="updateFormField(${index}, 'options', this.value)" style="width: 100%; font-size: 0.8rem;">`;
-            item.appendChild(optRow);
-        }
-
-        formFieldsList.appendChild(item);
-    });
-
-    // Add Preview Button
-    if (config.length > 0) {
-        const previewBtn = document.createElement('button');
-        previewBtn.className = 'btn btn-outline tiny designer-preview-btn';
-        previewBtn.textContent = '👁 Vorschau';
-        previewBtn.style.display = 'block';
-        previewBtn.style.width = '100%';
-        previewBtn.onclick = () => {
-            const mockRace = {
-                name: currentRace || "Vorschau",
-                settings: currentRaceSettings,
-                form_config: config
-            };
-            openRegistration(mockRace, true);
-        };
-        formFieldsList.appendChild(previewBtn);
-    }
-}
-
-window.updateFormField = (index, key, value) => {
-    if (!currentRaceSettings.form_config) currentRaceSettings.form_config = [];
-    currentRaceSettings.form_config[index][key] = value;
-    saveRaceSettings();
-    renderFormDesigner(currentRaceSettings.form_config);
-};
-
-window.removeFormField = (index) => {
-    currentRaceSettings.form_config.splice(index, 1);
-    saveRaceSettings();
-    renderFormDesigner(currentRaceSettings.form_config);
-};
-
-if (addFieldBtn) addFieldBtn.onclick = () => {
-    if (!currentRaceSettings.form_config) currentRaceSettings.form_config = [];
-    currentRaceSettings.form_config.push({ id: 'field_' + Date.now(), label: 'Neues Feld', type: 'text' });
-    saveRaceSettings();
-    renderFormDesigner(currentRaceSettings.form_config);
-};
 
 async function fetchRaceSettings() {
     if (!currentRace) return;
@@ -820,7 +1096,7 @@ async function saveRaceSettings() {
     const val = raceStatusSelect.value;
     const settingsToSend = {
         "displaytype": val,
-        form_config: currentRaceSettings.form_config || []
+        form_config: currentRaceSettings.form_config || ""
     };
 
 
@@ -1626,7 +1902,7 @@ sessionSelect.addEventListener('change', (e) => {
     localStorage.setItem('currentRace', currentRace);
     activeIndex = -1;
     fetchParticipants();
-    updateSettingsUI();
+    fetchRaceSettings(); // Also load settings for the new race
 });
 
 tagFilter.addEventListener('change', (e) => {
@@ -1785,16 +2061,19 @@ if (submitRegistrationBtn) {
         let finalPdfUri = null;
         let key;
 
-        // Pre-check mandatory fields
-        const config = currentRaceSettings.form_config || [];
-        for (const field of config) {
-            if (field.type !== 'paragraph') {
-                const input = document.getElementById(`field_${field.id}`);
-                if (input && !input.value.trim()) {
-                    alert(`Bitte füllen Sie das Feld "${field.label}" aus.`);
-                    input.focus();
-                    return;
-                }
+        // Data collection from the new custom HTML structure
+        const allInputs = dynamicFormContainer.querySelectorAll('input, select');
+        for (const input of allInputs) {
+            if (!input.value.trim() && input.required !== false) {
+                alert(`Bitte füllen Sie das Feld "${input.dataset.fieldName || 'Eingabe'}" aus.`);
+                input.focus();
+                return;
+            }
+            const label = (input.dataset.fieldName || "").toLowerCase();
+            const value = input.value;
+            if (label.includes('name') && !participantName) participantName = value;
+            if (label.includes('tag') || label.includes('kategorie')) {
+                participantTags = value.split(',').map(t => t.trim());
             }
         }
 
@@ -1807,10 +2086,21 @@ if (submitRegistrationBtn) {
             const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
             const fontRegular = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
 
-            // Improved Helper for True Inline Text Flow
+            const sanitizePdfText = (text) => {
+                if (!text) return "";
+                return text.replace(/□/g, '[ ]')
+                    .replace(/■/g, '[x]')
+                    .replace(/•/g, '-')
+                    .replace(/–/g, '-')
+                    .replace(/—/g, '-')
+                    .replace(/[^\x00-\xFF]/g, '?'); // Fallback for multi-byte chars
+            };
+
+            // Refined drawInFlow for the custom HTML nodes
             const drawInFlow = (text, size, fontObj, isValue = false) => {
                 if (!text) return;
-                const words = text.split(/(\s+)/); // Keep whitespace
+                const safeText = sanitizePdfText(text);
+                const words = safeText.split(/(\s+)/);
                 words.forEach(part => {
                     if (part === '\n') {
                         xOffset = 50;
@@ -1818,11 +2108,10 @@ if (submitRegistrationBtn) {
                         return;
                     }
                     const partWidth = fontObj.widthOfTextAtSize(part, size);
-                    if (xOffset + partWidth > 550) {
+                    if (xOffset + partWidth > 540) {
                         xOffset = 50;
                         yOffset -= size * 1.5;
                     }
-
                     if (part.trim() || isValue) {
                         page.drawText(part, { x: xOffset, y: yOffset, size, font: fontObj });
                         if (isValue) {
@@ -1836,36 +2125,77 @@ if (submitRegistrationBtn) {
                     }
                     xOffset += partWidth;
                 });
-                if (isValue) xOffset += 5; // Extra spacing after values
             };
 
-            page.drawText(`${currentRace.replace(/_/g, ' ')}`, { x: 50, y: height - 60, size: 24, font });
-            page.drawLine({ start: { x: 50, y: height - 75 }, end: { x: 550, y: height - 75 }, thickness: 1, color: PDFLib.rgb(0, 0, 0) });
 
-            let yOffset = height - 120;
+
+            let yOffset = height - 60;
             let xOffset = 50;
-            const config = currentRaceSettings.form_config || [];
 
-            config.forEach(field => {
-                if (field.type === 'paragraph') {
-                    drawInFlow(field.label, 11, fontRegular);
-                } else {
-                    const input = document.getElementById(`field_${field.id}`);
-                    if (!input) return;
+            // Simple node-by-node rendering for PDF
+            const processNodes = async (nodes) => {
+                for (const node of nodes) {
+                    if (node.nodeType === Node.TEXT_NODE) {
+                        drawInFlow(node.textContent, 11, fontRegular);
+                    } else if (node.nodeName === 'DIV' && node.classList.contains('form-line')) {
+                        xOffset = 50; yOffset -= 10;
+                        page.drawLine({ start: { x: 50, y: yOffset }, end: { x: 550, y: yOffset }, thickness: 0.5 });
+                        yOffset -= 20;
+                    } else if (node.nodeName === 'DIV' && node.classList.contains('draggable-logo')) {
+                        // Position relative to A4 page
+                        const rect = node.getBoundingClientRect();
+                        const parentRect = dynamicFormContainer.getBoundingClientRect();
+                        const pdfX = (node.offsetLeft / 793) * 595; // 793px is roughly 210mm in some contexts, but let's be more precise
+                        // A4 is 595pt wide and 841pt high
+                        // Our A4 designer is 210mm wide. 1pt = 0.3527mm. 210mm / 0.3527 = 595.4pt.
+                        // So 1mm = 2.83pt.
+                        const pxToPt = 595 / 793.7; // assuming 210mm = 793.7px @ 96dpi
 
-                    const value = input.value;
-                    const label = field.label;
-
-                    if (label.toLowerCase().includes('name') && !participantName) participantName = value;
-                    if (label.toLowerCase().includes('tag') || label.toLowerCase().includes('kategorie')) {
-                        participantTags = value.split(',').map(t => t.trim());
+                        const img = node.querySelector('img');
+                        if (img && img.src) {
+                            try {
+                                const imgBytes = await fetch(img.src).then(res => res.arrayBuffer());
+                                const embeddedImg = img.src.includes('png') ? await pdfDoc.embedPng(imgBytes) : await pdfDoc.embedJpg(imgBytes);
+                                const dims = embeddedImg.scaleToFit(node.offsetWidth * pxToPt, node.offsetHeight * pxToPt);
+                                page.drawImage(embeddedImg, {
+                                    x: (node.offsetLeft * pxToPt),
+                                    y: height - (node.offsetTop * pxToPt) - dims.height,
+                                    width: dims.width,
+                                    height: dims.height
+                                });
+                            } catch (e) { console.error("Logo embed failed", e); }
+                        }
+                    } else if (node.nodeName === 'INPUT' || node.nodeName === 'SELECT') {
+                        drawInFlow(node.value || " ", 11, fontRegular, true);
+                    } else if (node.nodeName === 'BR') {
+                        xOffset = 50; yOffset -= 15;
+                    } else if (node.nodeName === 'UL' || node.nodeName === 'OL') {
+                        xOffset = 70; // Indent
+                        const items = node.querySelectorAll('li');
+                        for (let i = 0; i < items.length; i++) {
+                            const bullet = node.nodeName === 'UL' ? '• ' : `${i + 1}) `;
+                            drawInFlow(bullet + items[i].textContent, 11, fontRegular);
+                            xOffset = 70; yOffset -= 5;
+                        }
+                        xOffset = 50;
+                    } else if (node.childNodes.length > 0) {
+                        await processNodes(node.childNodes);
                     }
-
-                    drawInFlow(value, 12, fontRegular, true);
                 }
-                // Very simple page boundary check
-                if (yOffset < 100) { /* Next page logic would go here */ }
-            });
+            };
+            await processNodes(dynamicFormContainer.childNodes);
+
+            // Draw Footer in PDF
+            const footerEl = document.getElementById('dynamicFormFooter');
+            if (footerEl && footerEl.style.display !== 'none') {
+                page.drawText(sanitizePdfText(footerEl.innerText), {
+                    x: 50,
+                    y: 30,
+                    size: 9,
+                    font: fontRegular,
+                    color: PDFLib.rgb(0.4, 0.4, 0.4)
+                });
+            }
 
             if (!participantName || participantName === "Gast") {
                 alert("Bitte stellen Sie sicher, dass ein Feld für den 'Namen' vorhanden und ausgefüllt ist.");
@@ -1885,10 +2215,11 @@ if (submitRegistrationBtn) {
                 height: pngDims.height,
             });
 
-            page.drawText(`Datum: ${new Date().toLocaleString()}`, { x: 50, y: 50, size: 10, font: fontRegular });
+
 
             finalPdfUri = await pdfDoc.saveAsBase64({ dataUri: true });
             signedPdfBase64 = finalPdfUri;
+            console.log("PDF generated successfully, length:", signedPdfBase64.length);
         } catch (e) {
             console.error("PDF creation failed", e);
         }
@@ -1904,6 +2235,7 @@ if (submitRegistrationBtn) {
         };
 
         try {
+            console.log(`Sending registration to: ${PUBLIC_BASE}/register/${currentRace}`);
             const res = await fetch(`${PUBLIC_BASE}/register/${currentRace}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
