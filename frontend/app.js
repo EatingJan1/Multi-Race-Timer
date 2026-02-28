@@ -238,6 +238,12 @@ async function init() {
 
     if (openFormDesignerBtn) {
         openFormDesignerBtn.onclick = () => {
+            // Überprüfen, ob das Gerät ein Mobilgerät ist (z.B. Bildschirmbreite kleiner als 768px)
+            if (window.matchMedia("(max-width: 1024px)").matches && ('ontouchstart' in window)) {
+                alert("Der Formular-Designer ist nur auf dem Desktop verfügbar.");
+                return; // Funktion hier abbrechen
+            }
+
             try {
                 let config = currentRaceSettings.form_config || {};
                 if (typeof config === 'string') {
