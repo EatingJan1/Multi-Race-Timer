@@ -822,7 +822,23 @@ async function openRegistration(race, isPreview = false, isKiosk = false) {
     isRegistrationPreview = isPreview;
     isKioskMode = isKiosk;
     currentRace = race.name;
-    currentRaceSettings = race.settings || {};
+
+    // Fetch full settings if we only have the lite version (from /public/races)
+    if (!race.settings || !race.settings.form_config) {
+        try {
+            const res = await fetch(`${PUBLIC_BASE}/settings/${race.name}`);
+            if (res.ok) {
+                currentRaceSettings = await res.json();
+            } else {
+                currentRaceSettings = race.settings || {};
+            }
+        } catch (e) {
+            console.error("Failed to fetch full settings", e);
+            currentRaceSettings = race.settings || {};
+        }
+    } else {
+        currentRaceSettings = race.settings;
+    }
 
     if (backToLandingBtn) {
         backToLandingBtn.style.display = isKiosk ? 'none' : 'block';
@@ -1189,9 +1205,19 @@ function startPolling() {
         if (adminApp.style.display === 'block') {
             await fetchSessions();
             if (currentRace && !editMode) await fetchParticipants();
-        } else {
+        } else if (landingPage.style.display === 'block') {
             await fetchPublicRaces();
+        } else if (publicResultsPage.style.display === 'block' && currentRace) {
+            // For public results, we poll the results endpoint
+            try {
+                const res = await fetch(`${PUBLIC_BASE}/results/${currentRace}`);
+                if (res.ok) {
+                    publicParticipants = await res.json();
+                    renderPublicResults();
+                }
+            } catch (e) { console.error("Poll results failed", e); }
         }
+        // If on registrationPage, we don't need to poll anything from backend
     }, 2000);
 }
 

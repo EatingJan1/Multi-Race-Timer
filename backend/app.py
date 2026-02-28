@@ -238,22 +238,47 @@ class PublicInfo(Resource):
 @public_ns.route('/races')
 class PublicRaceList(Resource):
     def get(self):
-        """List public races for landing page"""
+        """List public races for landing page (lite view)"""
         files = [f.replace('.json', '') for f in os.listdir(DATA_DIR) if f.endswith('.json')]
         public_races = []
         for race_name in files:
             data = load_data(race_name)
             settings = data.get('settings', {})
-            print(settings)
-            if 'key' in settings:
-                settings.pop('key')
-
-            if not (settings.get('displaytype', 'hidden') == 'hidden' or settings.get('displaytype', 'hidden') == 'kiosk'):
+            
+            # Lite view: Remove heavy form_config and sensitive key
+            lite_settings = {k: v for k, v in settings.items() if k not in ['form_config', 'key']}
+            
+            display_type = lite_settings.get('displaytype', 'hidden')
+            if display_type not in ['hidden', 'kiosk']:
                 public_races.append({
                     'name': race_name,
-                    'settings': settings
+                    'settings': lite_settings
                 })
         return sorted(public_races, key=lambda x: x['name'], reverse=True)
+
+@public_ns.route('/race/<string:race_name>')
+class PublicRaceDetail(Resource):
+    def get(self, race_name):
+        """Get full details for a specific race publicly"""
+        data = load_data(race_name)
+        settings = data.get('settings', {})
+        # Remove private key if any
+        if 'key' in settings:
+            settings_copy = settings.copy()
+            settings_copy.pop('key')
+            data['settings'] = settings_copy
+            
+        return data
+
+@public_ns.route('/settings/<string:race_name>')
+class PublicRaceSettings(Resource):
+    def get(self, race_name):
+        """Get only settings for a specific race publicly (includes form_config)"""
+        data = load_data(race_name)
+        settings = data.get('settings', {})
+        if 'key' in settings:
+            settings.pop('key')
+        return settings
 
 @public_ns.route('/register/<string:race_name>')
 class PublicRegister(Resource):
