@@ -251,23 +251,59 @@
                     </div>
                     <nav class="settings-tabs">
                         <button class="tab-btn active" data-tab="tab-race">
-                            <span class="tab-icon">🏁</span>
+                            <span class="tab-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path fill="currentColor" d="M14.4,6L14,4H5V21H7V14H12.6L13,16H20V6H14.4Z" />
+                                </svg>
+                            </span>
                             Rennen
                         </button>
                         <button class="tab-btn" data-tab="tab-layout">
-                            <span class="tab-icon">📊</span>
+                            <span class="tab-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path fill="currentColor"
+                                        d="M4 5V19H20V5H4M18 7V11H13V7H18M11 7V17H6V7H11M13 13H18V17H13V13Z" />
+                                </svg>
+                            </span>
                             Layout
                         </button>
                         <button class="tab-btn" data-tab="tab-users">
-                            <span class="tab-icon">👥</span>
+                            <span class="tab-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path fill="currentColor"
+                                        d="M16 17V19H2V17S2 13 9 13 16 17 16 17M12.5 7.5A3.5 3.5 0 1 0 9 11A3.5 3.5 0 0 0 12.5 7.5M15.94 13A5.37 5.37 0 0 1 18 17V19H22V17S22 13.37 15.94 13M15 4A3.5 3.5 0 1 0 19 7.5A3.5 3.5 0 0 0 15 4Z" />
+                                </svg>
+                            </span>
                             Benutzer
                         </button>
-                        <button class="tab-btn" data-tab="tab-designer">
-                            <span class="tab-icon">📝</span>
-                            Formular
+                        <button class="tab-btn" data-tab="tab-registration">
+                            <span class="tab-icon">
+                                <svg viewBox="0 0 24 24">
+                                    <path fill="currentColor"
+                                        d="M21.1,12.5L19.7,11.1C19.3,10.7 18.7,10.7 18.3,11.1L14.5,14.9L15.5,15.9L19.3,12.1L20.7,13.5L21.1,12.5M12,2C10.89,2 10,2.89 10,4V20C10,21.11 10.89,22 12,22H18C19.11,22 20,21.11 20,20V15.5L18,17.5V20H12V4H18V7H20V4C20,2.89 19.11,2 18,2H12Z" />
+                                </svg>
+                            </span>
+                            Anmeldung
                         </button>
                     </nav>
                     <div class="settings-sidebar-footer">
+                        <!-- Moved user edit area here per user request -->
+                        <div id="userEditArea" class="user-edit-panel sidebar-edit" style="display:none;">
+                            <h4 id="userEditTitle">Benutzer</h4>
+                            <div class="form-group">
+                                <label>Name</label>
+                                <input type="text" id="targetUsername" class="form-input tiny" placeholder="Name">
+                            </div>
+                            <div class="form-group">
+                                <label>Passwort</label>
+                                <input type="password" id="targetPassword" class="form-input tiny"
+                                    placeholder="Passwort">
+                            </div>
+                            <div class="form-actions-mini">
+                                <button id="saveUserBtn" class="btn btn-primary tiny">OK</button>
+                                <button id="cancelUserEditBtn" class="btn btn-outline tiny">X</button>
+                            </div>
+                        </div>
                         <button id="logoutBtn" class="btn btn-outline danger-text" style="width:100%">Abmelden</button>
                     </div>
                 </aside>
@@ -351,18 +387,6 @@
                         <button id="resetColumnsBtn" class="btn btn-outline tiny" style="margin-top:10px">Standard
                             wiederherstellen</button>
 
-                        <div class="divider"></div>
-
-                        <h3>Ergebnis-Wertung</h3>
-                        <div class="setting-item">
-                            <label>Ranking Methoden für öffentliche Ansicht:</label>
-                            <div class="checkbox-group" style="display: flex; gap: 2rem; margin-top: 0.8rem;">
-                                <label class="check-container"> Bestzeit <input type="checkbox" id="rankMethodBest"
-                                        checked> <span class="checkmark"></span></label>
-                                <label class="check-container"> Durchschnitt <input type="checkbox"
-                                        id="rankMethodAverage"> <span class="checkmark"></span></label>
-                            </div>
-                        </div>
                     </div>
 
                     <!-- Tab: User Management -->
@@ -390,32 +414,28 @@
                             </table>
                         </div>
 
-                        <div id="userEditArea" class="user-edit-panel" style="display:none;">
-                            <h4 id="userEditTitle">Neuer Benutzer</h4>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Benutzername</label>
-                                    <input type="text" id="targetUsername" class="form-input" placeholder="Name">
-                                </div>
-                                <div class="form-group">
-                                    <label>Passwort</label>
-                                    <input type="password" id="targetPassword" class="form-input"
-                                        placeholder="Passwort">
-                                </div>
-                            </div>
-                            <div class="form-actions-mini">
-                                <button id="saveUserBtn" class="btn btn-primary tiny">Speichern</button>
-                                <button id="cancelUserEditBtn" class="btn btn-outline tiny">Abbrechen</button>
-                            </div>
-                        </div>
+                        <!-- userEditArea moved to sidebar footer -->
                     </div>
 
-                    <!-- Tab: Form Designer -->
-                    <div id="tab-designer" class="tab-pane">
+                    <!-- Tab: Registration & Designer -->
+                    <div id="tab-registration" class="tab-pane">
                         <div class="pane-header">
-                            <h3>Anmeldeformular & Kiosk</h3>
-                            <p class="subtitle">Design der Anmeldung auf A4-Basis</p>
+                            <h3>Event & Anmeldung</h3>
+                            <p class="subtitle">Design der Anmeldung & öffentliche Wertung</p>
                         </div>
+
+                        <h3>Statistik & Wertung</h3>
+                        <div class="setting-item">
+                            <label>Ranking Methoden für öffentliche Ansicht:</label>
+                            <div class="checkbox-group" style="display: flex; gap: 2rem; margin-top: 0.8rem;">
+                                <label class="check-container"> Bestzeit <input type="checkbox" id="rankMethodBest"
+                                        checked> <span class="checkmark"></span></label>
+                                <label class="check-container"> Durchschnitt <input type="checkbox"
+                                        id="rankMethodAverage"> <span class="checkmark"></span></label>
+                            </div>
+                        </div>
+
+                        <div class="divider"></div>
 
                         <div class="designer-promo-card">
                             <div class="designer-promo-text">
