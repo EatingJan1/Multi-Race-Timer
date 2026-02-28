@@ -1095,8 +1095,8 @@ function updateSettingsUI() {
     if (actionsHeader) actionsHeader.style.display = (editMode && currentRace) ? 'table-cell' : 'none';
 
     // Race Status Select
-    if (raceStatusSelect) {
-        currentRaceSettings.displaytype = raceStatusSelect.value;
+    if (raceStatusSelect && currentRaceSettings.displaytype) {
+        raceStatusSelect.value = currentRaceSettings.displaytype;
     }
 
     if (startNumMinInput) startNumMinInput.value = currentRaceSettings.start_num_min || '';
@@ -2029,6 +2029,7 @@ deleteSessionBtn.onclick = async () => {
 };
 
 settingsBtn.onclick = () => {
+    fetchRaceSettings(); // Fetch current values when opening
     settingsModal.classList.add('active');
     // Default to first tab
     tabButtons[0].click();
