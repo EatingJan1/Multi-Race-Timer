@@ -99,6 +99,20 @@ const printSubtitle = document.getElementById('printSubtitle');
 const backendError = document.getElementById('backendError');
 const columnConfigList = document.getElementById('columnConfigList');
 const resetColumnsBtn = document.getElementById('resetColumnsBtn');
+
+// User Management Elements
+const userListBody = document.getElementById('userListBody');
+const addUserBtn = document.getElementById('addUserBtn');
+const userEditArea = document.getElementById('userEditArea');
+const userEditTitle = document.getElementById('userEditTitle');
+const targetUsernameInput = document.getElementById('targetUsername');
+const targetPasswordInput = document.getElementById('targetPassword');
+const saveUserBtn = document.getElementById('saveUserBtn');
+const cancelUserEditBtn = document.getElementById('cancelUserEditBtn');
+
+// Tab Buttons
+const tabButtons = document.querySelectorAll('.tab-btn');
+const tabPanes = document.querySelectorAll('.tab-pane');
 const raceTableHead = document.querySelector('#raceTable thead tr');
 const logoutBtn = document.getElementById('logoutBtn');
 
@@ -1792,9 +1806,9 @@ window.onkeydown = (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'p') { e.preventDefault(); openExportMenu(); }
 };
 
-async function apiCall(endpoint, method, body = null) {
+async function apiCall(endpoint, method, body = null, base = API_BASE) {
     try {
-        const res = await fetch(`${API_BASE}${endpoint}`, {
+        const res = await fetch(`${base}${endpoint}`, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: body ? JSON.stringify(body) : null,
@@ -2014,11 +2028,101 @@ deleteSessionBtn.onclick = async () => {
     settingsModal.classList.remove('active');
 };
 
-settingsBtn.onclick = () => settingsModal.classList.add('active');
+settingsBtn.onclick = () => {
+    settingsModal.classList.add('active');
+    // Default to first tab
+    tabButtons[0].click();
+};
+
 closeSettings.onclick = () => {
     settingsModal.classList.remove('active')
     saveRaceSettings();
 };
+
+// Tab Switching
+tabButtons.forEach(btn => {
+    btn.onclick = () => {
+        tabButtons.forEach(b => b.classList.remove('active'));
+        tabPanes.forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        const tabId = btn.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+        if (tabId === 'tab-users') fetchUsers();
+    };
+});
+
+// User Management Logic
+async function fetchUsers() {
+    try {
+        const users = await apiCall('/users', 'GET', null, AUTH_BASE);
+        renderUserList(users);
+    } catch (e) {
+        console.error("Failed to fetch users", e);
+    }
+}
+
+function renderUserList(users) {
+    userListBody.innerHTML = '';
+    users.forEach(username => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${username}</strong></td>
+            <td style="text-align:right">
+                <button class="btn btn-outline tiny edit-user" data-user="${username}">Passwort ändern</button>
+                <button class="btn btn-outline danger-text tiny delete-user" data-user="${username}">Löschen</button>
+            </td>
+        `;
+
+        tr.querySelector('.edit-user').onclick = () => {
+            userEditArea.style.display = 'block';
+            userEditTitle.textContent = `Passwort ändern für ${username}`;
+            targetUsernameInput.value = username;
+            targetUsernameInput.readOnly = true;
+            targetPasswordInput.focus();
+        };
+
+        tr.querySelector('.delete-user').onclick = () => deleteUser(username);
+
+        userListBody.appendChild(tr);
+    });
+}
+
+addUserBtn.onclick = () => {
+    userEditArea.style.display = 'block';
+    userEditTitle.textContent = 'Neuer Benutzer';
+    targetUsernameInput.value = '';
+    targetUsernameInput.readOnly = false;
+    targetPasswordInput.value = '';
+    targetUsernameInput.focus();
+};
+
+cancelUserEditBtn.onclick = () => {
+    userEditArea.style.display = 'none';
+};
+
+saveUserBtn.onclick = async () => {
+    const username = targetUsernameInput.value;
+    const password = targetPasswordInput.value;
+    if (!username || !password) return alert("Benutzername und Passwort erforderlich!");
+
+    try {
+        await apiCall('/users', 'POST', { username, password }, AUTH_BASE);
+        userEditArea.style.display = 'none';
+        fetchUsers();
+    } catch (e) {
+        alert("Speichern fehlgeschlagen: " + e.message);
+    }
+};
+
+async function deleteUser(username) {
+    if (!confirm(`Benutzer ${username} wirklich löschen?`)) return;
+    try {
+        await apiCall(`/users/${username}`, 'DELETE', null, AUTH_BASE);
+        fetchUsers();
+    } catch (e) {
+        alert("Löschen fehlgeschlagen: " + e.message);
+    }
+}
 
 if (modeSwitch) modeSwitch.onchange = () => {
     startMode = modeSwitch.checked ? 'delayed' : 'direct';
