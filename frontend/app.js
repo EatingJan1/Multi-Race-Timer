@@ -2049,228 +2049,403 @@ if (backToLandingBtn) backToLandingBtn.onclick = () => {
 
 if (clearSignatureBtn) clearSignatureBtn.onclick = () => signaturePad.clear();
 
-if (submitRegistrationBtn) {
-    submitRegistrationBtn.onclick = async () => {
-        if (signaturePad.isEmpty()) {
-            alert("Bitte unterschreiben Sie das Formular.");
-            return;
+/**
+ * Generiert das fertige PDF basierend auf dem aktuellen Formular-Inhalt.
+ * Gibt ein Objekt mit { pdfBase64, name, tags } zurück oder null bei Fehlern.
+ */
+async function generateRegistrationPdf() {
+    const participantNameInput = document.querySelector('input[data-field-name*="name" i]') ||
+        document.querySelector('input[data-field-name*="teilnehmer" i]');
+    const participantName = participantNameInput ? participantNameInput.value : "Gast";
+
+    const participantTags = [];
+    const allInputs = dynamicFormContainer.querySelectorAll('input, select');
+    for (const input of allInputs) {
+        const label = (input.dataset.fieldName || "").toLowerCase();
+        const value = input.value;
+        if (label.includes('tag') || label.includes('kategorie') || label.includes('verein')) {
+            participantTags.push(value);
         }
+    }
 
-        let participantName = ""; // Initialize empty
-        let participantTags = [];
-        let finalPdfUri = null;
-        let key;
+    if (!participantName || participantName.toLowerCase() === "gast") {
+        alert("Bitte stellen Sie sicher, dass ein Namensfeld vorhanden und ausgefüllt ist.");
+        return null;
+    }
 
-        // Data collection from the new custom HTML structure
-        const allInputs = dynamicFormContainer.querySelectorAll('input, select');
-        for (const input of allInputs) {
-            if (!input.value.trim() && input.required !== false) {
-                alert(`Bitte füllen Sie das Feld "${input.dataset.fieldName || 'Eingabe'}" aus.`);
-                input.focus();
-                return;
+    try {
+        const pdfDoc = await PDFLib.PDFDocument.create();
+        const page = pdfDoc.addPage([595.28, 841.89]);
+        const { width, height } = page.getSize();
+
+        const fonts = {
+            helvetica: await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica),
+            helveticaBold: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold),
+            helveticaOblique: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaOblique),
+            helveticaBoldOblique: await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBoldOblique),
+            times: await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRoman),
+            timesBold: await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRomanBold),
+            timesItalic: await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRomanItalic),
+            timesBoldItalic: await pdfDoc.embedFont(PDFLib.StandardFonts.TimesRomanBoldItalic),
+            courier: await pdfDoc.embedFont(PDFLib.StandardFonts.Courier),
+            courierBold: await pdfDoc.embedFont(PDFLib.StandardFonts.CourierBold),
+            courierOblique: await pdfDoc.embedFont(PDFLib.StandardFonts.CourierOblique),
+            courierBoldOblique: await pdfDoc.embedFont(PDFLib.StandardFonts.CourierBoldOblique),
+        };
+
+        const parseColor = (colorStr) => {
+            if (!colorStr || colorStr === 'transparent' || colorStr === 'inherit' || colorStr === 'initial') return PDFLib.rgb(0, 0, 0);
+            const rgb = colorStr.match(/\d+/g);
+            if (rgb && rgb.length >= 3) {
+                return PDFLib.rgb(parseInt(rgb[0]) / 255, parseInt(rgb[1]) / 255, parseInt(rgb[2]) / 255);
             }
-            const label = (input.dataset.fieldName || "").toLowerCase();
-            const value = input.value;
-            if (label.includes('name') && !participantName) participantName = value;
-            if (label.includes('tag') || label.includes('kategorie')) {
-                participantTags = value.split(',').map(t => t.trim());
-            }
-        }
-
-        // Generate final A4 PDF using pdf-lib
-        let signedPdfBase64 = null;
-        try {
-            const pdfDoc = await PDFLib.PDFDocument.create();
-            const page = pdfDoc.addPage([595.28, 841.89]); // A4
-            const { width, height } = page.getSize();
-            const font = await pdfDoc.embedFont(PDFLib.StandardFonts.HelveticaBold);
-            const fontRegular = await pdfDoc.embedFont(PDFLib.StandardFonts.Helvetica);
-
-            const sanitizePdfText = (text) => {
-                if (!text) return "";
-                return text.replace(/□/g, '[ ]')
-                    .replace(/■/g, '[x]')
-                    .replace(/•/g, '-')
-                    .replace(/–/g, '-')
-                    .replace(/—/g, '-')
-                    .replace(/[^\x00-\xFF]/g, '?'); // Fallback for multi-byte chars
-            };
-
-            // Refined drawInFlow for the custom HTML nodes
-            const drawInFlow = (text, size, fontObj, isValue = false) => {
-                if (!text) return;
-                const safeText = sanitizePdfText(text);
-                const words = safeText.split(/(\s+)/);
-                words.forEach(part => {
-                    if (part === '\n') {
-                        xOffset = 50;
-                        yOffset -= size * 1.5;
-                        return;
-                    }
-                    const partWidth = fontObj.widthOfTextAtSize(part, size);
-                    if (xOffset + partWidth > 540) {
-                        xOffset = 50;
-                        yOffset -= size * 1.5;
-                    }
-                    if (part.trim() || isValue) {
-                        page.drawText(part, { x: xOffset, y: yOffset, size, font: fontObj });
-                        if (isValue) {
-                            page.drawLine({
-                                start: { x: xOffset, y: yOffset - 2 },
-                                end: { x: xOffset + partWidth, y: yOffset - 2 },
-                                thickness: 0.8,
-                                color: PDFLib.rgb(0, 0, 0)
-                            });
-                        }
-                    }
-                    xOffset += partWidth;
-                });
-            };
-
-
-
-            let yOffset = height - 60;
-            let xOffset = 50;
-
-            // Simple node-by-node rendering for PDF
-            const processNodes = async (nodes) => {
-                for (const node of nodes) {
-                    if (node.nodeType === Node.TEXT_NODE) {
-                        drawInFlow(node.textContent, 11, fontRegular);
-                    } else if (node.nodeName === 'DIV' && node.classList.contains('form-line')) {
-                        xOffset = 50; yOffset -= 10;
-                        page.drawLine({ start: { x: 50, y: yOffset }, end: { x: 550, y: yOffset }, thickness: 0.5 });
-                        yOffset -= 20;
-                    } else if (node.nodeName === 'DIV' && node.classList.contains('draggable-logo')) {
-                        // Position relative to A4 page
-                        const rect = node.getBoundingClientRect();
-                        const parentRect = dynamicFormContainer.getBoundingClientRect();
-                        const pdfX = (node.offsetLeft / 793) * 595; // 793px is roughly 210mm in some contexts, but let's be more precise
-                        // A4 is 595pt wide and 841pt high
-                        // Our A4 designer is 210mm wide. 1pt = 0.3527mm. 210mm / 0.3527 = 595.4pt.
-                        // So 1mm = 2.83pt.
-                        const pxToPt = 595 / 793.7; // assuming 210mm = 793.7px @ 96dpi
-
-                        const img = node.querySelector('img');
-                        if (img && img.src) {
-                            try {
-                                const imgBytes = await fetch(img.src).then(res => res.arrayBuffer());
-                                const embeddedImg = img.src.includes('png') ? await pdfDoc.embedPng(imgBytes) : await pdfDoc.embedJpg(imgBytes);
-                                const dims = embeddedImg.scaleToFit(node.offsetWidth * pxToPt, node.offsetHeight * pxToPt);
-                                page.drawImage(embeddedImg, {
-                                    x: (node.offsetLeft * pxToPt),
-                                    y: height - (node.offsetTop * pxToPt) - dims.height,
-                                    width: dims.width,
-                                    height: dims.height
-                                });
-                            } catch (e) { console.error("Logo embed failed", e); }
-                        }
-                    } else if (node.nodeName === 'INPUT' || node.nodeName === 'SELECT') {
-                        drawInFlow(node.value || " ", 11, fontRegular, true);
-                    } else if (node.nodeName === 'BR') {
-                        xOffset = 50; yOffset -= 15;
-                    } else if (node.nodeName === 'UL' || node.nodeName === 'OL') {
-                        xOffset = 70; // Indent
-                        const items = node.querySelectorAll('li');
-                        for (let i = 0; i < items.length; i++) {
-                            const bullet = node.nodeName === 'UL' ? '• ' : `${i + 1}) `;
-                            drawInFlow(bullet + items[i].textContent, 11, fontRegular);
-                            xOffset = 70; yOffset -= 5;
-                        }
-                        xOffset = 50;
-                    } else if (node.childNodes.length > 0) {
-                        await processNodes(node.childNodes);
-                    }
+            if (colorStr.startsWith('#')) {
+                const hex = colorStr.replace('#', '');
+                if (hex.length === 3) {
+                    const r = parseInt(hex[0] + hex[0], 16) / 255;
+                    const g = parseInt(hex[1] + hex[1], 16) / 255;
+                    const b = parseInt(hex[2] + hex[2], 16) / 255;
+                    return PDFLib.rgb(r, g, b);
                 }
-            };
-            await processNodes(dynamicFormContainer.childNodes);
-
-            // Draw Footer in PDF
-            const footerEl = document.getElementById('dynamicFormFooter');
-            if (footerEl && footerEl.style.display !== 'none') {
-                page.drawText(sanitizePdfText(footerEl.innerText), {
-                    x: 50,
-                    y: 30,
-                    size: 9,
-                    font: fontRegular,
-                    color: PDFLib.rgb(0.4, 0.4, 0.4)
-                });
+                const r = parseInt(hex.substring(0, 2), 16) / 255;
+                const g = parseInt(hex.substring(2, 4), 16) / 255;
+                const b = parseInt(hex.substring(4, 6), 16) / 255;
+                return PDFLib.rgb(r || 0, g || 0, b || 0);
             }
+            return PDFLib.rgb(0, 0, 0);
+        };
 
-            if (!participantName || participantName === "Gast") {
-                alert("Bitte stellen Sie sicher, dass ein Feld für den 'Namen' vorhanden und ausgefüllt ist.");
-                return;
+        const sanitizePdfText = (text) => {
+            if (!text) return "";
+            return text.replace(/□/g, '[ ]')
+                .replace(/■/g, '[x]')
+                .replace(/•/g, '-')
+                .replace(/·/g, '-')
+                .replace(/\uf0b7/g, '-')
+                .replace(/\xa0/g, ' ')
+                .replace(/–/g, '-')
+                .replace(/—/g, '-')
+                .replace(/ẞ/g, 'SS')
+                .replace(/[\r\n]+/g, ' ') // Replace newlines with space to avoid WinAnsi error
+                .replace(/[^\x00-\xFF]/g, '');
+        };
+
+        const replacePlaceholders = (text) => {
+            if (!text) return "";
+            let t = text;
+            t = t.replace(/\[DATUM\]/g, new Date().toLocaleDateString('de-DE'));
+            t = t.replace(/\[EVENT\]/g, (currentRace || "Event").replace(/_/g, ' '));
+            t = t.replace(/\[ZEIT\]/g, new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }));
+            t = t.replace(/Teilnehmer/g, participantName);
+            return t;
+        };
+
+        const getFont = (family, isBold, isItalic) => {
+            const fam = (family || "helvetica").toLowerCase();
+            let font;
+            if (fam.includes("times")) {
+                if (isBold && isItalic) font = fonts.timesBoldItalic;
+                else if (isBold) font = fonts.timesBold;
+                else if (isItalic) font = fonts.timesItalic;
+                else font = fonts.times;
+            } else if (fam.includes("courier")) {
+                if (isBold && isItalic) font = fonts.courierBoldOblique;
+                else if (isBold) font = fonts.courierBold;
+                else if (isItalic) font = fonts.courierOblique;
+                else font = fonts.courier;
+            } else {
+                if (isBold && isItalic) font = fonts.helveticaBoldOblique;
+                else if (isBold) font = fonts.helveticaBold;
+                else if (isItalic) font = fonts.helveticaOblique;
+                else font = fonts.helvetica;
             }
+            return font || fonts.helvetica;
+        };
 
-            const signatureData = signaturePad.toDataURL();
-            const pngImage = await pdfDoc.embedPng(signatureData);
-            const pngDims = pngImage.scale(0.4);
+        const embedImage = async (src) => {
+            try {
+                if (src.startsWith('data:')) {
+                    const base64 = src.split(',')[1];
+                    const binary = atob(base64);
+                    const bytes = new Uint8Array(binary.length);
+                    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+                    return src.includes('png') ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+                } else {
+                    const resp = await fetch(src);
+                    const bytes = await resp.arrayBuffer();
+                    return src.includes('png') ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+                }
+            } catch (e) {
+                console.error("Embedding error", e);
+                return null;
+            }
+        };
 
-            yOffset -= 40;
-            page.drawText("Unterschrift:", { x: 50, y: yOffset, size: 12, font });
-            page.drawImage(pngImage, {
-                x: 50,
-                y: yOffset - 110,
-                width: pngDims.width,
-                height: pngDims.height,
+        let yOffset = height - 60;
+        let xOffset = 50;
+        let flowStartX = 50;
+        const rootElement = document.getElementById('registrationSheet') || dynamicFormContainer;
+        const designerWidth = rootElement.offsetWidth || 794;
+        const pxToPt = 595.28 / designerWidth;
+        const containerRect = rootElement.getBoundingClientRect();
+
+        const drawInFlow = (text, style, isValue = false) => {
+            if (!text) return;
+            const processed = replacePlaceholders(text);
+            const safeText = sanitizePdfText(processed);
+            const { font, size, color } = style;
+            const words = safeText.split(/(\s+)/);
+
+            words.forEach(part => {
+                if (part === '') return;
+
+                const partWidth = font.widthOfTextAtSize(part, size);
+                if (xOffset + partWidth > 545) {
+                    xOffset = flowStartX; yOffset -= size * 1.5;
+                }
+
+                page.drawText(part, { x: xOffset, y: yOffset, size, font, color });
+                if (isValue && part.trim()) {
+                    page.drawLine({
+                        start: { x: xOffset, y: yOffset - 2 },
+                        end: { x: xOffset + partWidth, y: yOffset - 2 },
+                        thickness: 0.8, color
+                    });
+                }
+                xOffset += partWidth;
             });
 
 
+        };
 
-            finalPdfUri = await pdfDoc.saveAsBase64({ dataUri: true });
-            signedPdfBase64 = finalPdfUri;
-            console.log("PDF generated successfully, length:", signedPdfBase64.length);
-        } catch (e) {
-            console.error("PDF creation failed", e);
-        }
+        const processNodes = async (nodes, inheritedStyle) => {
+            for (const node of nodes) {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const computed = window.getComputedStyle(node);
+                    if (computed.display === 'none' || computed.visibility === 'hidden') continue;
+                    if (node.classList.contains('btn') || node.classList.contains('designer-field-helper') || node.id === 'clearSignatureBtn') continue;
+
+                    const fontFamily = computed.fontFamily;
+                    const fontSize = parseFloat(computed.fontSize);
+                    const color = parseColor(computed.color);
+                    const isBold = computed.fontWeight === 'bold' || parseInt(computed.fontWeight) >= 700 || node.nodeName === 'B' || node.nodeName === 'STRONG';
+                    const isItalic = computed.fontStyle === 'italic' || node.nodeName === 'I' || node.nodeName === 'EM';
+
+                    const display = computed.display || 'inline';
+                    const isBlock = display.includes('block') || display.includes('flex') || ['P', 'H1', 'H2', 'H3', 'DIV', 'SECTION', 'HEADER', 'FOOTER'].includes(node.nodeName);
+
+                    let currentStyle = { font: getFont(fontFamily, isBold, isItalic), size: fontSize * pxToPt, color };
+
+                    const position = computed.position;
+                    const isFooter = node.classList.contains('a4-designer-footer') || node.id === 'dynamicFormFooter';
+
+                    // Draw border-top if exists (e.g. for signature lines or footer)
+                    const borderTop = parseFloat(computed.borderTopWidth);
+                    const rect = node.getBoundingClientRect();
+                    const leftPt = (rect.left - containerRect.left) * pxToPt;
+                    const topPt = (rect.top - containerRect.top) * pxToPt;
+
+                    if (borderTop > 0 && computed.borderTopStyle !== 'none') {
+                        const lineY = height - topPt;
+                        page.drawLine({
+                            start: { x: leftPt, y: lineY },
+                            end: { x: (rect.right - containerRect.left) * pxToPt, y: lineY },
+                            thickness: borderTop * pxToPt,
+                            color: parseColor(computed.borderTopColor)
+                        });
+                    }
+
+                    if (position === 'absolute' || isFooter) {
+                        const oldX = xOffset;
+                        const oldY = yOffset;
+                        const oldStartX = flowStartX;
+
+                        flowStartX = leftPt;
+                        xOffset = flowStartX;
+                        // Position text baseline below the top of the absolute element
+                        yOffset = height - topPt - (currentStyle.size * 0.95);
+                        if (borderTop > 0) yOffset -= (borderTop * pxToPt) + 4; // Add gap for line
+
+                        if (node.childNodes.length > 0) {
+                            await processNodes(node.childNodes, currentStyle);
+                        } else if (node.nodeName === 'INPUT' || node.nodeName === 'SELECT') {
+                            drawInFlow((node.value + " ") || " ", currentStyle, true);
+                        }
+
+                        xOffset = oldX;
+                        yOffset = oldY;
+                        flowStartX = oldStartX;
+                        continue;
+                    }
+
+                    // For regular blocks, synchronize the Y-Offset to match the designer's vertical positioning
+                    if (isBlock) {
+                        flowStartX = leftPt;
+                        xOffset = leftPt;
+                        yOffset = height - topPt - (currentStyle.size * 0.95);
+                        // Extra gap if a border-top is present (e.g. signature line)
+                        if (borderTop > 0) yOffset -= (borderTop * pxToPt) + 6;
+                    }
+
+                    if (node.nodeName === 'CANVAS' && node.id === 'signaturePad') {
+                        if (signaturePad && !signaturePad.isEmpty()) {
+                            const rect = node.getBoundingClientRect();
+                            const signatureData = signaturePad.toDataURL();
+                            const sigImg = await embedImage(signatureData);
+                            if (sigImg) {
+                                const targetWidth = rect.width * pxToPt;
+                                const targetHeight = rect.height * pxToPt;
+                                const dims = sigImg.scaleToFit(targetWidth, targetHeight);
+                                page.drawImage(sigImg, {
+                                    x: (rect.left - containerRect.left) * pxToPt,
+                                    y: height - ((rect.top - containerRect.top) * pxToPt) - dims.height,
+                                    width: dims.width, height: dims.height
+                                });
+                                // Update flow position after signature
+                                yOffset = height - ((rect.top - containerRect.top) * pxToPt) - dims.height - 10;
+                                xOffset = 50;
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (node.classList.contains('form-line')) {
+                        const rect = node.getBoundingClientRect();
+                        const colorLine = parseColor(computed.backgroundColor);
+                        const lineY = height - ((rect.top - containerRect.top) * pxToPt);
+                        page.drawLine({
+                            start: { x: 50, y: lineY },
+                            end: { x: 545, y: lineY },
+                            thickness: 0.5, color: colorLine
+                        });
+                        yOffset = lineY - 10;
+                        continue;
+                    }
+
+                    if (node.classList.contains('draggable-logo')) {
+                        const img = node.querySelector('img');
+                        if (img && img.src) {
+                            const embeddedImg = await embedImage(img.src);
+                            if (embeddedImg) {
+                                const rect = node.getBoundingClientRect();
+                                const targetWidth = rect.width * pxToPt;
+                                const targetHeight = rect.height * pxToPt;
+                                const dims = embeddedImg.scaleToFit(targetWidth, targetHeight);
+                                page.drawImage(embeddedImg, {
+                                    x: (rect.left - containerRect.left) * pxToPt,
+                                    y: height - ((rect.top - containerRect.top) * pxToPt) - dims.height,
+                                    width: dims.width, height: dims.height
+                                });
+                                // Don't force yOffset for floating logos unless they are very low
+                                const bottom = height - ((rect.top - containerRect.top) * pxToPt) - dims.height;
+                                if (bottom < yOffset && rect.left < containerRect.left + 150) {
+                                    yOffset = bottom - 10;
+                                }
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (node.nodeName === 'INPUT' || node.nodeName === 'SELECT') {
+                        drawInFlow((node.value + " ") || " ", currentStyle, true);
+                    } else if (node.nodeName === 'BR') {
+                        xOffset = 50; yOffset -= currentStyle.size * 1.5;
+                    } else if (node.nodeName === 'UL' || node.nodeName === 'OL') {
+                        const oldX = xOffset; xOffset = 70;
+                        const items = node.querySelectorAll('li');
+                        for (let i = 0; i < items.length; i++) {
+                            const bullet = node.nodeName === 'UL' ? '• ' : `${i + 1}) `;
+                            drawInFlow(bullet + items[i].textContent, currentStyle);
+                            xOffset = 70; yOffset -= currentStyle.size * 1.2;
+                        }
+                        xOffset = oldX;
+                    } else if (node.childNodes.length > 0) {
+                        await processNodes(node.childNodes, currentStyle);
+                    }
+                } else if (node.nodeType === Node.TEXT_NODE) {
+                    if (node.textContent.trim() || node.textContent.includes(' ')) {
+                        drawInFlow(node.textContent, inheritedStyle);
+                    }
+                }
+            }
+        };
+
+        const defaultStyle = { font: fonts.helvetica, size: 11, color: PDFLib.rgb(0, 0, 0) };
+        await processNodes(rootElement.childNodes, defaultStyle);
+
+        const pdfBase64 = await pdfDoc.saveAsBase64({ dataUri: true });
+        return { pdfBase64, name: participantName, tags: participantTags };
+
+    } catch (err) {
+        console.error("PDF Fehler:", err);
+        alert("Fehler beim Erstellen der PDF.");
+        return null;
+    }
+}
+
+
+
+// Button-Handler: Registrierung absenden
+if (submitRegistrationBtn) {
+    submitRegistrationBtn.onclick = async () => {
+        // PDF generieren und Daten sammeln
+        const result = await generateRegistrationPdf();
+        if (!result) return; // Abbruch bei Validierungsfehlern
 
         const params = new URLSearchParams(window.location.search);
-        key = params.get('y');
+        const key = params.get('y');
 
         const regData = {
-            name: participantName,
-            tags: participantTags,
-            signed_pdf: signedPdfBase64,
+            name: result.name,
+            tags: result.tags,
+            signed_pdf: result.pdfBase64,
             key: key
         };
 
         try {
-            console.log(`Sending registration to: ${PUBLIC_BASE}/register/${currentRace}`);
+            submitRegistrationBtn.disabled = true;
+            submitRegistrationBtn.textContent = "Wird gesendet...";
+
             const res = await fetch(`${PUBLIC_BASE}/register/${currentRace}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(regData)
             });
+
             if (res.ok) {
-                const result = await res.json();
+                const data = await res.json();
 
                 if (isKioskMode) {
-                    alert(`Erfolgreich angemeldet!\nDeine Startnummer: ${result.start_number}`);
-                    // Reset Form for next user
+                    alert(`Erfolgreich angemeldet!\nDeine Startnummer: ${data.start_number}`);
+                    // Formular zurücksetzen für den nächsten Teilnehmer
                     signaturePad.clear();
-                    renderDynamicForm(currentRaceSettings.form_config || []);
+                    renderDynamicForm(currentRaceSettings.form_config || {});
                     window.scrollTo(0, 0);
                 } else {
-                    alert(`Erfolgreich angemeldet! Deine Startnummer: ${result.start_number}\n\nDeine Anmeldung wird nun heruntergeladen.`);
-                    // Trigger Download
+                    alert(`Erfolgreich angemeldet!\nStartnummer: ${data.start_number}\n\nDein Beleg wird nun heruntergeladen.`);
+                    // Download auslösen
                     const link = document.createElement('a');
-                    link.href = finalPdfUri;
-                    link.download = `Anmeldung_${participantName.replace(/\s+/g, '_')}.pdf`;
+                    link.href = result.pdfBase64;
+                    link.download = `Anmeldung_${result.name.replace(/\s+/g, '_')}.pdf`;
                     document.body.appendChild(link);
                     link.click();
                     document.body.removeChild(link);
                     showLandingPage();
                 }
-            }
-            else {
+            } else {
                 const err = await res.json();
-                alert("Fehler: " + (err.message || "Anmeldung fehlgeschlagen"));
+                alert("Fehler: " + (err.message || "Anmeldung fehlgeschlagen."));
             }
         } catch (e) {
-            alert("Fehler bei der Anmeldung.");
+            console.error("Submission failed", e);
+            alert("Verbindungsfehler bei der Anmeldung.");
+        } finally {
+            submitRegistrationBtn.disabled = false;
+            submitRegistrationBtn.textContent = "JETZT REGISTRIEREN";
         }
     };
 }
+
 
 window.onclick = (e) => {
     if (e.target == settingsModal) settingsModal.classList.remove('active');
