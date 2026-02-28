@@ -2169,11 +2169,13 @@ async function generateRegistrationPdf() {
                     const binary = atob(base64);
                     const bytes = new Uint8Array(binary.length);
                     for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-                    return src.includes('png') ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+                    const mime = src.split(';')[0].split(':')[1];
+                    return mime.includes('png') ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
                 } else {
                     const resp = await fetch(src);
                     const bytes = await resp.arrayBuffer();
-                    return src.includes('png') ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
+                    const contentType = resp.headers.get('content-type') || "";
+                    return contentType.includes('png') || src.toLowerCase().includes('.png') ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
                 }
             } catch (e) {
                 console.error("Embedding error", e);
@@ -2216,6 +2218,8 @@ async function generateRegistrationPdf() {
             });
 
 
+
+
         };
 
         const processNodes = async (nodes, inheritedStyle) => {
@@ -2245,7 +2249,65 @@ async function generateRegistrationPdf() {
                     const leftPt = (rect.left - containerRect.left) * pxToPt;
                     const topPt = (rect.top - containerRect.top) * pxToPt;
 
-                    if (borderTop > 0 && computed.borderTopStyle !== 'none') {
+                    const isLogo = node.classList.contains('draggable-logo') || node.nodeName === 'IMG';
+                    const isSignaturePad = node.nodeName === 'CANVAS' && node.id === 'signaturePad';
+                    const isFormLine = node.classList.contains('form-line');
+
+                    // 1. Handle Images / Logos / Signatures FIRST
+                    if (isLogo) {
+                        const img = node.nodeName === 'IMG' ? node : node.querySelector('img');
+                        if (img && img.src) {
+                            const embeddedImg = await embedImage(img.src);
+                            if (embeddedImg) {
+                                const targetWidth = rect.width * pxToPt;
+                                const targetHeight = rect.height * pxToPt;
+                                const dims = embeddedImg.scaleToFit(targetWidth, targetHeight);
+                                page.drawImage(embeddedImg, {
+                                    x: leftPt,
+                                    y: height - topPt - dims.height,
+                                    width: dims.width, height: dims.height
+                                });
+                                if (position !== 'absolute') {
+                                    yOffset = height - topPt - dims.height - 10;
+                                }
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (isSignaturePad) {
+                        if (signaturePad && !signaturePad.isEmpty()) {
+                            const signatureData = signaturePad.toDataURL();
+                            const sigImg = await embedImage(signatureData);
+                            if (sigImg) {
+                                const targetWidth = rect.width * pxToPt;
+                                const targetHeight = rect.height * pxToPt;
+                                const dims = sigImg.scaleToFit(targetWidth, targetHeight);
+                                page.drawImage(sigImg, {
+                                    x: leftPt,
+                                    y: height - topPt - dims.height,
+                                    width: dims.width, height: dims.height
+                                });
+                                yOffset = height - topPt - dims.height - 10;
+                                xOffset = flowStartX;
+                            }
+                        }
+                        continue;
+                    }
+
+                    if (isFormLine) {
+                        const colorLine = parseColor(computed.backgroundColor);
+                        const lineY = height - topPt;
+                        page.drawLine({
+                            start: { x: 50, y: lineY },
+                            end: { x: 545, y: lineY },
+                            thickness: 1, color: colorLine
+                        });
+                        yOffset = lineY - 10;
+                        continue;
+                    }
+
+                    if (borderTop > 0 && computed.borderTopStyle !== 'none' && !node.classList.contains('form-line')) {
                         const lineY = height - topPt;
                         page.drawLine({
                             start: { x: leftPt, y: lineY },
@@ -2287,64 +2349,7 @@ async function generateRegistrationPdf() {
                         if (borderTop > 0) yOffset -= (borderTop * pxToPt) + 6;
                     }
 
-                    if (node.nodeName === 'CANVAS' && node.id === 'signaturePad') {
-                        if (signaturePad && !signaturePad.isEmpty()) {
-                            const rect = node.getBoundingClientRect();
-                            const signatureData = signaturePad.toDataURL();
-                            const sigImg = await embedImage(signatureData);
-                            if (sigImg) {
-                                const targetWidth = rect.width * pxToPt;
-                                const targetHeight = rect.height * pxToPt;
-                                const dims = sigImg.scaleToFit(targetWidth, targetHeight);
-                                page.drawImage(sigImg, {
-                                    x: (rect.left - containerRect.left) * pxToPt,
-                                    y: height - ((rect.top - containerRect.top) * pxToPt) - dims.height,
-                                    width: dims.width, height: dims.height
-                                });
-                                // Update flow position after signature
-                                yOffset = height - ((rect.top - containerRect.top) * pxToPt) - dims.height - 10;
-                                xOffset = 50;
-                            }
-                        }
-                        continue;
-                    }
 
-                    if (node.classList.contains('form-line')) {
-                        const rect = node.getBoundingClientRect();
-                        const colorLine = parseColor(computed.backgroundColor);
-                        const lineY = height - ((rect.top - containerRect.top) * pxToPt);
-                        page.drawLine({
-                            start: { x: 50, y: lineY },
-                            end: { x: 545, y: lineY },
-                            thickness: 0.5, color: colorLine
-                        });
-                        yOffset = lineY - 10;
-                        continue;
-                    }
-
-                    if (node.classList.contains('draggable-logo')) {
-                        const img = node.querySelector('img');
-                        if (img && img.src) {
-                            const embeddedImg = await embedImage(img.src);
-                            if (embeddedImg) {
-                                const rect = node.getBoundingClientRect();
-                                const targetWidth = rect.width * pxToPt;
-                                const targetHeight = rect.height * pxToPt;
-                                const dims = embeddedImg.scaleToFit(targetWidth, targetHeight);
-                                page.drawImage(embeddedImg, {
-                                    x: (rect.left - containerRect.left) * pxToPt,
-                                    y: height - ((rect.top - containerRect.top) * pxToPt) - dims.height,
-                                    width: dims.width, height: dims.height
-                                });
-                                // Don't force yOffset for floating logos unless they are very low
-                                const bottom = height - ((rect.top - containerRect.top) * pxToPt) - dims.height;
-                                if (bottom < yOffset && rect.left < containerRect.left + 150) {
-                                    yOffset = bottom - 10;
-                                }
-                            }
-                        }
-                        continue;
-                    }
 
                     if (node.nodeName === 'INPUT' || node.nodeName === 'SELECT') {
                         drawInFlow((node.value + " ") || " ", currentStyle, true);
