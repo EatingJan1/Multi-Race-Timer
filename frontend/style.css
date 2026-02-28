@@ -2843,4 +2843,55 @@ input:checked+.switch-slider:before {
     .user-edit-panel {
         padding: 1rem;
     }
+
+    /* Mobile A4 Registration View Scaling */
+    .registration-container {
+        padding: 1rem !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+    }
+
+    .reg-header {
+        gap: 1rem !important;
+        margin-bottom: 1.5rem !important;
+        flex-direction: row !important;
+    }
+
+    #regRaceTitle {
+        font-size: 1.4rem !important;
+    }
+
+    .reg-content {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        width: 100% !important;
+        overflow: visible !important;
+        padding-top: 10px !important;
+    }
+
+    .a4-page {
+        position: relative !important;
+        left: 50% !important;
+        margin-left: -105mm !important;
+        transform-origin: top center !important;
+        transform: scale(calc((100vw - 40px) / 210mm)) !important;
+        margin-top: 0 !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3) !important;
+        margin-bottom: calc(-297mm + (297mm * ((100vw - 40px) / 210mm)) + 20px) !important;
+    }
+
+    #registrationSheet+div {
+        width: 100% !important;
+        max-width: none !important;
+        padding: 0 10px !important;
+        margin: 20px 0 !important;
+    }
+
+    #submitRegistrationBtn {
+        height: 56px;
+        font-size: 1.1rem !important;
+        border-radius: 12px;
+    }
 }
