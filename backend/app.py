@@ -62,6 +62,10 @@ def load_users():
     except Exception:
         return {}
 
+def save_users(users):
+    with open(USERS_FILE, 'w') as f:
+        json.dump(users, f, indent=4)
+
 def get_app_version():
     try:
         # Get the latest git tag
@@ -98,6 +102,43 @@ class Login(Resource):
             return {'status': 'success', 'message': 'Logged in successfully'}, 200
         
         return {'status': 'error', 'message': 'Invalid credentials'}, 401
+
+@auth_ns.route('/users')
+class UserList(Resource):
+    @login_required
+    def get(self):
+        """List all users (usernames only)"""
+        users = load_users()
+        return list(users.keys()), 200
+
+    @login_required
+    def post(self):
+        """Create or update a user"""
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+        if not username or not password:
+            abort(400, "Username and password required")
+        
+        users = load_users()
+        users[username] = {"password": password}
+        save_users(users)
+        return {'status': 'success'}, 200
+
+@auth_ns.route('/users/<string:username>')
+class UserDetail(Resource):
+    @login_required
+    def delete(self, username):
+        """Delete a user"""
+        users = load_users()
+        if username not in users:
+            abort(404, "User not found")
+        if len(users) <= 1:
+            abort(400, "Cannot delete the last user")
+        
+        users.pop(username)
+        save_users(users)
+        return {'status': 'success'}, 200
 
 @auth_ns.route('/logout')
 class Logout(Resource):
