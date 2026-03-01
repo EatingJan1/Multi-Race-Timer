@@ -479,9 +479,57 @@
 
         <!-- Participants List -->
         <div class="card">
-            <div id="editActions" style="display: none; margin-bottom: 1rem;">
-                <button id="addParticipantBtn" class="btn btn-start" style="width: auto; padding: 0.6rem 1.2rem;">+
-                    Teilnehmer hinzufügen</button>
+            <div id="editActions"
+                style="display: none; margin-bottom: 1rem; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+                <button id="addParticipantBtn" class="btn btn-start" style="width: auto; padding: 0.6rem 1.2rem;">
+                    <svg style="width:20px;height:20px;vertical-align:middle;margin-right:6px;" viewBox="0 0 24 24">
+                        <path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
+                    </svg>
+                    Teilnehmer hinzufügen
+                </button>
+                <button id="appendParticipantsBtn" class="btn btn-outline"
+                    style="width: auto; padding: 0.6rem 1.2rem; border-color: var(--primary); color: var(--text-main);">
+                    <svg style="width:20px;height:20px;vertical-align:middle;margin-right:6px;" viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                            d="M15,14H19V17H22V19H19V22H17V19H14V17H17V14H15M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
+                    </svg>
+                    Liste importieren
+                </button>
+
+                <!-- Bulk Actions (visible when selections exist) -->
+                <div id="bulkActions"
+                    style="display: none; margin-left: auto; margin-top: 0.7rem; gap: 0.5rem; align-items: center;">
+                    <span id="bulkSelectionCount" style="font-size: 0.85rem; opacity: 0.7; margin-right: 0.25rem;">0
+                        ausgewählt</span>
+                    <button id="bulkTagBtn" class="btn btn-outline tiny" style="border-color: var(--primary);">
+                        <svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24">
+                            <path fill="currentColor"
+                                d="M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.89,2 2,2.89 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.45 21.77,11.95 21.41,11.58Z" />
+                        </svg>
+                        Kategorie zuweisen
+                    </button>
+                    <button id="bulkDeleteBtn" class="btn btn-outline tiny danger-text">
+                        <svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24">
+                            <path fill="currentColor"
+                                d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
+                        </svg>
+                        Löschen
+                    </button>
+                </div>
+            </div>
+
+            <!-- Bulk Tag Assignment Popover -->
+            <div id="bulkTagPopover"
+                style="display: none; margin-bottom: 1rem; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 12px; padding: 1rem;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="bulkTagInput" class="form-input" placeholder="z.B. U18, Herren"
+                        list="bulkTagSuggestions" style="flex: 1;">
+                    <datalist id="bulkTagSuggestions"></datalist>
+                    <button id="bulkTagApplyBtn" class="btn btn-primary tiny"
+                        style="white-space: nowrap; height: 38px; padding: 0 1rem;">Zuweisen</button>
+                    <button id="bulkTagCancelBtn" class="btn btn-outline tiny"
+                        style="height: 38px; padding: 0 0.75rem;">✕</button>
+                </div>
             </div>
             <div class="table-container">
                 <table id="raceTable">
@@ -557,6 +605,62 @@
             <div class="modal-actions">
                 <button id="saveParticipant" class="btn btn-primary">Speichern</button>
                 <button id="cancelEdit" class="btn btn-outline">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Append Participants Review Modal -->
+    <div id="appendReviewModal" class="modal">
+        <div class="modal-content card" style="max-width: 800px; width: 95%;">
+            <h2>Teilnehmer hinzufügen (Vorschau)</h2>
+            <p class="subtitle" style="margin-bottom: 1rem;">Markieren Sie Teilnehmer, um ihnen Kategorien zuzuweisen.
+            </p>
+
+            <div class="table-container"
+                style="max-height: 350px; overflow-y: auto; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 36px;"><input type="checkbox" id="appendSelectAll" title="Alle auswählen">
+                            </th>
+                            <th>Startnr.</th>
+                            <th>Name</th>
+                            <th>Kategorien</th>
+                        </tr>
+                    </thead>
+                    <tbody id="appendReviewList">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="setting-item"
+                style="margin-bottom: 1.5rem; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 12px; padding: 1rem;">
+                <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">
+                    <svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24">
+                        <path fill="currentColor"
+                            d="M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.89,2 2,2.89 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.45 21.77,11.95 21.41,11.58Z" />
+                    </svg>
+                    Kategorien für markierte Teilnehmer
+                </label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="text" id="appendTagsInput" class="form-input" placeholder="z.B. U18, Herren, Elite"
+                        list="appendTagSuggestions" style="flex: 1;">
+                    <datalist id="appendTagSuggestions"></datalist>
+                    <button id="applyAppendTagsBtn" class="btn btn-primary tiny"
+                        style="white-space: nowrap; height: 38px; padding: 0 1rem;">Zuweisen</button>
+                </div>
+                <span id="appendSelectionHint" class="subtitle"
+                    style="margin-top: 0.4rem; display: block; font-size: 0.8rem;">0 Teilnehmer ausgewählt</span>
+            </div>
+
+            <div id="appendStats"
+                style="margin-bottom: 1.5rem; font-weight: 600; font-size: 0.95rem; color: var(--primary);">
+            </div>
+
+            <div class="modal-actions">
+                <button id="confirmAppendBtn" class="btn btn-primary">Jetzt Hinzufügen</button>
+                <button id="cancelAppendBtn" class="btn btn-outline">Abbrechen</button>
             </div>
         </div>
     </div>

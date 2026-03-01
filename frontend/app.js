@@ -11,7 +11,7 @@ let currentRace = localStorage.getItem('currentRace') || '';
 let currentTag = '';
 let pollInterval;
 let startMode = localStorage.getItem('startMode') || 'direct';
-let editMode = false;
+let editMode = localStorage.getItem('editMode') === 'true';
 let editingIndex = -1;
 let uploadedLogoData = null;
 let currentRaceSettings = {};
@@ -21,6 +21,8 @@ let isRegistrationPreview = false;
 let isKioskMode = false;
 let publicParticipants = [];
 let publicRaceData = null;
+let isAppendMode = false; // Flag for import mode
+let pendingAppend = []; // Temporary storage for append preview
 
 const DEFAULT_COLUMNS = [
     { id: 'number', label: 'STARTNR.', visible: true, required: true, key: 'number' },
@@ -98,6 +100,14 @@ const printLogo = document.getElementById('printLogo');
 const printSubtitle = document.getElementById('printSubtitle');
 const backendError = document.getElementById('backendError');
 const columnConfigList = document.getElementById('columnConfigList');
+
+// Append Modal
+const appendParticipantsBtn = document.getElementById('appendParticipantsBtn');
+const appendReviewModal = document.getElementById('appendReviewModal');
+const appendReviewList = document.getElementById('appendReviewList');
+const confirmAppendBtn = document.getElementById('confirmAppendBtn');
+const cancelAppendBtn = document.getElementById('cancelAppendBtn');
+const appendStats = document.getElementById('appendStats');
 const resetColumnsBtn = document.getElementById('resetColumnsBtn');
 
 // User Management Elements
@@ -1247,6 +1257,15 @@ function renderTable() {
     // 1. Render Header
     const visibleCols = columnConfig.filter(c => c.visible);
     raceTableHead.innerHTML = '';
+
+    // Checkbox column header in edit mode
+    if (editMode && currentRace) {
+        const thCb = document.createElement('th');
+        thCb.style.width = '36px';
+        thCb.innerHTML = '<input type="checkbox" id="editSelectAll" class="edit-table-check">';
+        raceTableHead.appendChild(thCb);
+    }
+
     visibleCols.forEach(col => {
         const th = document.createElement('th');
         th.textContent = col.label;
@@ -1338,6 +1357,12 @@ function renderTable() {
             : '';
 
         let rowHtml = '';
+
+        // Checkbox cell in edit mode
+        if (editMode && currentRace) {
+            rowHtml += `<td style="text-align:center;"><input type="checkbox" class="edit-table-check edit-row-cb" data-index="${globalIndex}"></td>`;
+        }
+
         visibleCols.forEach(col => {
             if (col.id === 'number') rowHtml += `<td data-label="Startnr.">#${p.start_number}</td>`;
             else if (col.id === 'name') rowHtml += `<td data-label="Name">${p.name}${tagsHtml}</td>`;
@@ -1353,9 +1378,15 @@ function renderTable() {
             rowHtml += `
                 <td data-label="Aktionen">
                     <div class="edit-row-actions">
-                        <button class="btn-icon" onclick="event.stopPropagation(); downloadSignedPdf(${globalIndex})" title="PDF herunterladen">✉️</button>
-                        <button class="btn-icon" onclick="event.stopPropagation(); openEditModal(${globalIndex})" title="Bearbeiten">✏️</button>
-                        <button class="btn-icon danger-icon" onclick="event.stopPropagation(); deleteParticipant(${globalIndex})" title="Löschen">🗑️</button>
+                        <button class="btn-icon" onclick="event.stopPropagation(); downloadSignedPdf(${globalIndex})" title="PDF herunterladen">
+                            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" /></svg>
+                        </button>
+                        <button class="btn-icon" onclick="event.stopPropagation(); openEditModal(${globalIndex})" title="Bearbeiten">
+                            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" /></svg>
+                        </button>
+                        <button class="btn-icon danger-icon" onclick="event.stopPropagation(); deleteParticipant(${globalIndex})" title="Löschen">
+                            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+                        </button>
                     </div>
                 </td>
             `;
@@ -1369,7 +1400,60 @@ function renderTable() {
         const nextIdx = participants.findIndex(p => !p.end_time);
         if (nextIdx !== -1) selectParticipant(nextIdx);
     }
+
+    // Wire up edit-mode checkboxes
+    if (editMode && currentRace) {
+        setupEditCheckboxes();
+    }
 }
+
+// --- Bulk selection logic for main table ---
+function setupEditCheckboxes() {
+    const selectAll = document.getElementById('editSelectAll');
+    const bulkActions = document.getElementById('bulkActions');
+    const bulkCount = document.getElementById('bulkSelectionCount');
+
+    const updateBulkUI = () => {
+        const checked = raceBody.querySelectorAll('.edit-row-cb:checked');
+        const total = raceBody.querySelectorAll('.edit-row-cb');
+        const count = checked.length;
+
+        if (bulkActions) bulkActions.style.display = count > 0 ? 'flex' : 'none';
+        if (bulkCount) bulkCount.textContent = `${count} ausgewählt`;
+
+        if (selectAll) {
+            selectAll.checked = count === total.length && total.length > 0;
+            selectAll.indeterminate = count > 0 && count < total.length;
+        }
+    };
+
+    // Per-row checkboxes
+    raceBody.querySelectorAll('.edit-row-cb').forEach(cb => {
+        cb.onchange = () => {
+            cb.closest('tr').style.background = cb.checked ? 'rgba(99,102,241,0.1)' : '';
+            updateBulkUI();
+        };
+    });
+
+    // Select all
+    if (selectAll) {
+        selectAll.onchange = () => {
+            raceBody.querySelectorAll('.edit-row-cb').forEach(cb => {
+                cb.checked = selectAll.checked;
+                cb.closest('tr').style.background = cb.checked ? 'rgba(99,102,241,0.1)' : '';
+            });
+            updateBulkUI();
+        };
+    }
+
+    updateBulkUI();
+}
+
+function getSelectedIndices() {
+    return Array.from(raceBody.querySelectorAll('.edit-row-cb:checked'))
+        .map(cb => parseInt(cb.dataset.index));
+}
+
 
 setInterval(() => {
     if (activeIndex !== -1 && participants[activeIndex]) {
@@ -1961,28 +2045,33 @@ csvFileInput.addEventListener('change', async (e) => {
     if (!file) return;
 
     const fileName = file.name.toLowerCase();
-    const raceName = file.name.replace(/\.[^/.]+$/, "").replace(/\s+/g, '_');
+    const raceName = isAppendMode ? currentRace : file.name.replace(/\.[^/.]+$/, "").replace(/\s+/g, '_');
+
+    if (!raceName && !isAppendMode) {
+        alert("Bitte wählen Sie zuerst ein Rennen aus oder importieren Sie ein neues.");
+        return;
+    }
 
     try {
+        let peopleToImport = [];
+
         if (fileName.endsWith('.race')) {
             const text = await file.text();
             const fullData = JSON.parse(text);
-            await apiCall(`/${raceName}/full`, 'PUT', fullData);
+            if (isAppendMode) {
+                peopleToImport = fullData.people || [];
+            } else {
+                await apiCall(`/${raceName}/full`, 'PUT', fullData);
+            }
         } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data);
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const json = XLSX.utils.sheet_to_json(sheet);
-
-            // Map common headers to our person structure
-            const people = json.map((item, i) => {
+            peopleToImport = json.map((item, i) => {
                 const sn = parseInt(item['Startnummer'] || item['Startnr.'] || item['Number'] || item['#']) || (i + 1);
                 const tagsRaw = item['Kategorie'] || item['Tags'] || item['Kategorien'] || '';
                 const tags = tagsRaw.toString().split(/[,\s]+/).filter(t => t.length > 0);
-                duration = item['Duration'] || item['Dauer'] || item['Zeit'];
-
-
                 return {
                     id: sn.toString(),
                     name: item['Name'] || item['Full Name'] || `Person ${i + 1}`,
@@ -1990,41 +2079,312 @@ csvFileInput.addEventListener('change', async (e) => {
                     tags: tags,
                     start_time: null,
                     end_time: null,
-                    duration: duration
+                    duration: item['Duration'] || item['Dauer'] || item['Zeit'] || null
                 };
             });
-            await apiCall(`/${raceName}/people`, 'PUT', people);
         } else {
-            // Assume CSV
+            // CSV parsing
             const text = await file.text();
             const lines = text.split(/\r?\n/).filter(l => l.trim());
-            const people = lines.map((line, i) => {
-                const parts = line.split(/[;,]/);
-                const sn = parseInt(parts[1]?.trim()) || (i + 1);
-                let tags = [];
-                if (parts[2]) {
-                    const tagsRaw = parts[2].trim();
-                    const match = tagsRaw.match(/\[(.*?)\]/);
-                    tags = match ? match[1].split(/[,\s]+/).filter(t => t.length > 0) : tagsRaw.split(/[,\s]+/).filter(t => t.length > 0);
-                }
+            const headers = lines[0].split(/[;,]/).map(h => h.trim());
+            peopleToImport = lines.slice(1).map((line, i) => {
+                const parts = line.split(/[;,]/).map(p => p.trim());
+                const obj = {};
+                headers.forEach((h, idx) => obj[h] = parts[idx]);
+                const sn = parseInt(obj['Startnummer'] || obj['Startnr.'] || obj['Number'] || obj['#']) || (i + 1);
+                const tagsRaw = obj['Kategorie'] || obj['Tags'] || obj['Kategorien'] || '';
+                const tags = tagsRaw.toString().split(/[,\s]+/).filter(t => t.length > 0);
                 return {
-                    id: sn.toString(), name: parts[0]?.trim() || `Person ${i + 1}`,
-                    start_number: sn, tags: tags, start_time: null, end_time: null, duration: null
+                    id: sn.toString(),
+                    name: obj['Name'] || obj['Full Name'] || `Person ${i + 1}`,
+                    start_number: sn,
+                    tags: tags,
+                    start_time: null,
+                    end_time: null,
+                    duration: obj['Duration'] || obj['Dauer'] || obj['Zeit'] || null
                 };
             });
-            await apiCall(`/${raceName}/people`, 'PUT', people);
         }
 
-        currentRace = raceName;
-        localStorage.setItem('currentRace', currentRace);
-        await fetchSessions();
-        sessionSelect.value = currentRace;
-        await fetchParticipants();
-        updateSettingsUI();
+        if (isAppendMode) {
+            pendingAppend = peopleToImport;
+            openAppendReviewModal();
+        } else if (fileName.endsWith('.race')) {
+            // Already handled Race full PUT above
+            currentRace = raceName;
+            localStorage.setItem('currentRace', currentRace);
+            await fetchSessions();
+            sessionSelect.value = currentRace;
+            await fetchParticipants();
+            updateSettingsUI();
+        } else {
+            await apiCall(`/${raceName}/people`, 'PUT', peopleToImport);
+            currentRace = raceName;
+            localStorage.setItem('currentRace', currentRace);
+            await fetchSessions();
+            sessionSelect.value = currentRace;
+            await fetchParticipants();
+            updateSettingsUI();
+        }
     } catch (err) {
         alert('Fehler beim Import: ' + err.message);
+    } finally {
+        csvFileInput.value = '';
     }
 });
+
+function openAppendReviewModal() {
+    if (!appendReviewList) return;
+    appendReviewList.innerHTML = '';
+
+    // Collect all start_numbers already in use
+    const usedNumbers = new Set(participants.map(p => p.start_number));
+    const minNum = parseInt(currentRaceSettings.start_num_min) || 1;
+    const maxNum = parseInt(currentRaceSettings.start_num_max) || 9999;
+
+    let nextCandidate = minNum;
+    const findNext = () => {
+        while (usedNumbers.has(nextCandidate) && nextCandidate <= maxNum) nextCandidate++;
+        if (nextCandidate > maxNum) return null;
+        const num = nextCandidate;
+        usedNumbers.add(num);
+        nextCandidate++;
+        return num;
+    };
+
+    let overflowCount = 0;
+    pendingAppend.forEach((p, idx) => {
+        const originalNum = p.start_number;
+        const newNum = findNext();
+        if (newNum === null) { overflowCount++; return; }
+        p.start_number = newNum;
+        p.id = newNum.toString();
+
+        const tr = document.createElement('tr');
+        const changedHint = (originalNum !== newNum)
+            ? `<span style="opacity:0.45; font-size:0.8em; margin-left:6px;">(war #${originalNum})</span>`
+            : '';
+        tr.innerHTML = `
+            <td><input type="checkbox" class="append-row-check" data-index="${idx}"></td>
+            <td>#${newNum}${changedHint}</td>
+            <td>${p.name}</td>
+            <td class="append-tag-cell">${(p.tags || []).join(', ')}</td>`;
+        appendReviewList.appendChild(tr);
+    });
+
+    if (overflowCount > 0) {
+        pendingAppend = pendingAppend.filter(p => p.start_number !== undefined);
+        appendStats.innerHTML = `Insgesamt ${pendingAppend.length} Teilnehmer zugewiesen. <span style="color:var(--accent-red);">${overflowCount} konnten nicht zugewiesen werden (Nummernbereich voll).</span>`;
+    } else {
+        appendStats.textContent = `Insgesamt ${pendingAppend.length} Teilnehmer mit neuen Startnummern zugewiesen.`;
+    }
+
+    // --- Selection logic ---
+    const selectionHint = document.getElementById('appendSelectionHint');
+    const selectAllCb = document.getElementById('appendSelectAll');
+    const updateSelectionCount = () => {
+        const checked = appendReviewList.querySelectorAll('.append-row-check:checked').length;
+        if (selectionHint) selectionHint.textContent = `${checked} von ${pendingAppend.length} Teilnehmer ausgewählt`;
+    };
+
+    // Per-row checkbox change
+    appendReviewList.querySelectorAll('.append-row-check').forEach(cb => {
+        cb.onchange = () => {
+            cb.closest('tr').style.background = cb.checked ? 'rgba(99,102,241,0.12)' : '';
+            updateSelectionCount();
+            // Sync select-all state
+            if (selectAllCb) {
+                const total = appendReviewList.querySelectorAll('.append-row-check').length;
+                const checked = appendReviewList.querySelectorAll('.append-row-check:checked').length;
+                selectAllCb.checked = checked === total;
+                selectAllCb.indeterminate = checked > 0 && checked < total;
+            }
+        };
+    });
+
+    // Select all
+    if (selectAllCb) {
+        selectAllCb.checked = false;
+        selectAllCb.indeterminate = false;
+        selectAllCb.onchange = () => {
+            appendReviewList.querySelectorAll('.append-row-check').forEach(cb => {
+                cb.checked = selectAllCb.checked;
+                cb.closest('tr').style.background = cb.checked ? 'rgba(99,102,241,0.12)' : '';
+            });
+            updateSelectionCount();
+        };
+    }
+
+    // --- Tag suggestions ---
+    const tagSuggestions = document.getElementById('appendTagSuggestions');
+    const appendTagsInput = document.getElementById('appendTagsInput');
+    if (tagSuggestions) {
+        tagSuggestions.innerHTML = '';
+        const allTags = new Set();
+        participants.forEach(p => (p.tags || []).forEach(t => allTags.add(t)));
+        pendingAppend.forEach(p => (p.tags || []).forEach(t => allTags.add(t)));
+        allTags.forEach(tag => {
+            const opt = document.createElement('option');
+            opt.value = tag;
+            tagSuggestions.appendChild(opt);
+        });
+    }
+    if (appendTagsInput) appendTagsInput.value = '';
+
+
+    // --- Apply tags to SELECTED rows only ---
+    const applyBtn = document.getElementById('applyAppendTagsBtn');
+    if (applyBtn) {
+        applyBtn.onclick = () => {
+            const raw = appendTagsInput?.value || '';
+            const newTags = raw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+            if (newTags.length === 0) return;
+
+            const checkedBoxes = appendReviewList.querySelectorAll('.append-row-check:checked');
+            if (checkedBoxes.length === 0) {
+                applyBtn.textContent = 'Niemand markiert!';
+                setTimeout(() => { applyBtn.textContent = 'Zuweisen'; }, 1200);
+                return;
+            }
+
+            checkedBoxes.forEach(cb => {
+                const idx = parseInt(cb.dataset.index);
+                const person = pendingAppend[idx];
+                if (!person) return;
+                if (!person.tags) person.tags = [];
+                newTags.forEach(tag => {
+                    if (!person.tags.includes(tag)) person.tags.push(tag);
+                });
+                // Update the visible cell
+                const tagCell = cb.closest('tr').querySelector('.append-tag-cell');
+                if (tagCell) tagCell.textContent = person.tags.join(', ');
+            });
+
+            applyBtn.textContent = `✓ ${checkedBoxes.length} aktualisiert`;
+            applyBtn.style.background = 'var(--accent-green, #22c55e)';
+            setTimeout(() => {
+                applyBtn.textContent = 'Zuweisen';
+                applyBtn.style.background = '';
+            }, 1500);
+        };
+    }
+
+    updateSelectionCount();
+    appendReviewModal.style.display = 'flex';
+}
+
+if (appendParticipantsBtn) {
+    appendParticipantsBtn.onclick = () => {
+        if (!currentRace) { alert("Bitte wählen Sie zuerst ein Rennen aus."); return; }
+        isAppendMode = true;
+        csvFileInput.click();
+    };
+}
+
+if (confirmAppendBtn) {
+    confirmAppendBtn.onclick = async () => {
+        confirmAppendBtn.disabled = true;
+        confirmAppendBtn.textContent = "Speichern...";
+        try {
+            await apiCall(`/${currentRace}/people/append`, 'POST', pendingAppend);
+            appendReviewModal.style.display = 'none';
+            await fetchParticipants();
+        } catch (e) {
+            alert("Fehler beim Hinzufügen: " + e.message);
+        } finally {
+            confirmAppendBtn.disabled = false;
+            confirmAppendBtn.textContent = "Jetzt Hinzufügen";
+        }
+    };
+}
+
+if (cancelAppendBtn) {
+    cancelAppendBtn.onclick = () => {
+        appendReviewModal.style.display = 'none';
+        pendingAppend = [];
+    };
+}
+
+// --- Bulk Delete ---
+const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+if (bulkDeleteBtn) {
+    bulkDeleteBtn.onclick = async () => {
+        const indices = getSelectedIndices();
+        if (indices.length === 0) return;
+        if (!confirm(`${indices.length} Teilnehmer wirklich löschen?`)) return;
+
+        // Remove from highest index first to avoid shifting issues
+        indices.sort((a, b) => b - a).forEach(i => participants.splice(i, 1));
+        try {
+            await apiCall(`/${currentRace}/people`, 'PUT', participants);
+        } catch (e) {
+            alert("Fehler beim Löschen: " + e.message);
+        }
+        await fetchParticipants();
+    };
+}
+
+// --- Bulk Tag ---
+const bulkTagBtn = document.getElementById('bulkTagBtn');
+const bulkTagPopover = document.getElementById('bulkTagPopover');
+const bulkTagInput = document.getElementById('bulkTagInput');
+const bulkTagApplyBtn = document.getElementById('bulkTagApplyBtn');
+const bulkTagCancelBtn = document.getElementById('bulkTagCancelBtn');
+const bulkTagSuggestions = document.getElementById('bulkTagSuggestions');
+
+if (bulkTagBtn && bulkTagPopover) {
+    bulkTagBtn.onclick = () => {
+        bulkTagPopover.style.display = 'block';
+        if (bulkTagInput) bulkTagInput.focus();
+
+        // Populate suggestions
+        if (bulkTagSuggestions) {
+            bulkTagSuggestions.innerHTML = '';
+            const allTags = new Set();
+            participants.forEach(p => (p.tags || []).forEach(t => allTags.add(t)));
+            allTags.forEach(tag => {
+                const opt = document.createElement('option');
+                opt.value = tag;
+                bulkTagSuggestions.appendChild(opt);
+            });
+        }
+    };
+}
+
+if (bulkTagCancelBtn && bulkTagPopover) {
+    bulkTagCancelBtn.onclick = () => {
+        bulkTagPopover.style.display = 'none';
+        if (bulkTagInput) bulkTagInput.value = '';
+    };
+}
+
+if (bulkTagApplyBtn) {
+    bulkTagApplyBtn.onclick = async () => {
+        const raw = bulkTagInput?.value || '';
+        const newTags = raw.split(',').map(t => t.trim()).filter(t => t.length > 0);
+        if (newTags.length === 0) return;
+
+        const indices = getSelectedIndices();
+        if (indices.length === 0) return;
+
+        indices.forEach(i => {
+            if (!participants[i].tags) participants[i].tags = [];
+            newTags.forEach(tag => {
+                if (!participants[i].tags.includes(tag)) participants[i].tags.push(tag);
+            });
+        });
+
+        try {
+            await apiCall(`/${currentRace}/people`, 'PUT', participants);
+        } catch (e) {
+            alert("Fehler beim Speichern: " + e.message);
+        }
+
+        bulkTagPopover.style.display = 'none';
+        if (bulkTagInput) bulkTagInput.value = '';
+        await fetchParticipants();
+    };
+}
 
 deleteSessionBtn.onclick = async () => {
     if (!currentRace || !confirm(`Soll der Lauf "${currentRace}" wirklich gelöscht werden?`)) return;
@@ -2139,6 +2499,7 @@ if (modeSwitch) modeSwitch.onchange = () => {
 
 if (editSwitch) editSwitch.onchange = () => {
     editMode = editSwitch.checked;
+    localStorage.setItem('editMode', editMode);
     updateSettingsUI();
 };
 
@@ -2603,8 +2964,8 @@ window.onclick = (e) => {
 
 if (importCsvBtn) {
     importCsvBtn.onclick = (e) => {
-        // Verhindert das Auslösen des Imports, wenn man nur auf den Link im Dropdown klickt
         if (e.target.closest('#createEmptyRaceBtn')) return;
+        isAppendMode = false; // Reset to overwrite mode for "New" dropdown
         csvFileInput.click();
     };
 }
