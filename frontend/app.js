@@ -2273,9 +2273,10 @@ async function generateRegistrationPdf() {
             t = t.replace(/\[DATUM\]/g, new Date().toLocaleDateString('de-DE'));
             t = t.replace(/\[EVENT\]/g, (currentRace || "Event").replace(/_/g, ' '));
             t = t.replace(/\[ZEIT\]/g, new Date().toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }));
-            t = t.replace(/: Teilnehmer/g, participantName);
+            t = t.replace(/·Teilnehmer/g, participantName);
             return t;
         };
+
 
         const getFont = (family, isBold, isItalic) => {
             const fam = (family || "helvetica").toLowerCase();
