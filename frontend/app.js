@@ -1284,14 +1284,16 @@ function renderTable() {
     let displayList = participants.filter(p => !currentTag || (p.tags && p.tags.includes(currentTag)));
 
     // 2. Pre-calculate Ranks based on duration
+    // Only calculate from timestamps if NO manual duration is set
     displayList.filter(p => (!(p.duration > 0) && p.end_time)).forEach(p => {
         const start = new Date(p.start_time);
         const end = new Date(p.end_time);
-        p.duration = (end - start) / 1000;
+        p._calcDuration = (end - start) / 1000;
+        p.duration = p._calcDuration;
     });
 
     const finishedFiltered = displayList
-        .filter(p => p.duration)
+        .filter(p => p.duration > 0)
         .sort((a, b) => a.duration - b.duration);
 
     finishedFiltered.forEach((p, i) => {
@@ -1322,18 +1324,14 @@ function renderTable() {
 
 
 
-        if (p.start_time && !p.end_time) {
+        if (p.start_time && !p.end_time && !(p.duration > 0)) {
             status = 'Läuft';
             badgeClass = 'status-running';
             durationDisplay = `<span class="row-live-timer" data-start="${p.start_time}">-</span>`;
-        } else if ((p.end_time) || (!p.start_time && !p.end_time && p.duration > 0)) {
+        } else if (p.duration > 0) {
             status = 'Fertig';
             badgeClass = 'status-finished';
-            if (p.end_time) {
-                const start = new Date(p.start_time);
-                const end = new Date(p.end_time);
-                durationDisplay = ((end - start) / 1000).toFixed(3) + 's';
-            } else { durationDisplay = (p.duration || 0).toFixed(3) + 's'; }
+            durationDisplay = p.duration.toFixed(3) + 's';
 
             const rank = p.rank;
             rankDisplay = rank + '.';
@@ -1346,6 +1344,12 @@ function renderTable() {
                 diffDisplay = `+${diff.toFixed(3)}s`;
                 diffClass = 'diff-col';
             }
+        } else if (p.end_time) {
+            // Fallback: timestamps exist but no duration calculated yet
+            status = 'Fertig';
+            badgeClass = 'status-finished';
+            const calcD = (new Date(p.end_time) - new Date(p.start_time)) / 1000;
+            durationDisplay = calcD.toFixed(3) + 's';
         }
 
         if (!editMode) {
@@ -1568,6 +1572,48 @@ window.openEditModal = (index) => {
     editName.value = p.name;
     editNumber.value = p.start_number;
     editTags.value = p.tags ? p.tags.join(', ') : '';
+
+    // Duration field
+    const editDuration = document.getElementById('editDuration');
+    const editDurationHint = document.getElementById('editDurationHint');
+    const resetDurationBtn = document.getElementById('resetDurationBtn');
+    const editDurationSection = document.getElementById('editDurationSection');
+
+    if (editDuration) {
+        // Calculate display duration
+        let calcDuration = null;
+        if (p.start_time && p.end_time) {
+            calcDuration = (new Date(p.end_time) - new Date(p.start_time)) / 1000;
+        }
+
+        if (p.duration > 0) {
+            editDuration.value = p.duration;
+            if (calcDuration && Math.abs(calcDuration - p.duration) > 0.001) {
+                editDurationHint.textContent = `Manuell gesetzt. Berechnet wäre: ${calcDuration.toFixed(3)}s`;
+                editDurationHint.style.color = 'var(--primary)';
+            } else if (calcDuration) {
+                editDurationHint.textContent = `Aus Zeitstempeln berechnet (Start → Ende)`;
+                editDurationHint.style.color = '';
+            } else {
+                editDurationHint.textContent = `Manuell gesetzt (keine Zeitstempel vorhanden)`;
+                editDurationHint.style.color = 'var(--primary)';
+            }
+        } else {
+            editDuration.value = '';
+            editDurationHint.textContent = 'Leer = wird aus Start-/Endzeit berechnet';
+            editDurationHint.style.color = '';
+        }
+    }
+
+    // Reset button: clears manual duration
+    if (resetDurationBtn) {
+        resetDurationBtn.onclick = () => {
+            editDuration.value = '';
+            editDurationHint.textContent = 'Duration wird zurückgesetzt. Zeitstempel werden verwendet.';
+            editDurationHint.style.color = 'var(--accent-green, #22c55e)';
+        };
+    }
+
     editParticipantModal.classList.add('active');
 };
 cancelEditBtn.onclick = () => editParticipantModal.classList.remove('active');
@@ -1584,14 +1630,27 @@ saveParticipantBtn.onclick = async () => {
         alert(`Startnummer ${sn} wird bereits von ${dup.name} verwendet.`);
         return;
     }
+
+    // Duration handling
+    const editDuration = document.getElementById('editDuration');
+    const durationVal = editDuration?.value ? parseFloat(editDuration.value) : null;
+
     if (editingIndex === -1) {
         participants.push({
             id: sn.toString(), name: name, start_number: sn, tags: tags,
-            start_time: null, end_time: null, duration: null
+            start_time: null, end_time: null, duration: durationVal
         });
     } else {
         const p = participants[editingIndex];
         p.name = name; p.start_number = sn; p.id = sn.toString(); p.tags = tags;
+
+        if (durationVal !== null && durationVal > 0) {
+            // Manual duration override
+            p.duration = durationVal;
+        } else {
+            // Reset: clear manual duration, keep timestamps
+            p.duration = null;
+        }
     }
     participants.sort((a, b) => a.start_number - b.start_number);
     await apiCall(`/${currentRace}/people`, 'PUT', participants);

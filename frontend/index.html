@@ -602,6 +602,23 @@
                 <input type="text" id="editTags" class="form-input" list="availableTags" placeholder="U18, PRO">
                 <datalist id="availableTags"></datalist>
             </div>
+            <div class="setting-item" id="editDurationSection">
+                <label>Duration (Sekunden)</label>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <input type="number" id="editDuration" class="form-input" step="0.001" placeholder="z.B. 12.345"
+                        style="flex: 1;">
+                    <button type="button" id="resetDurationBtn" class="btn btn-outline tiny"
+                        style="height: 38px; white-space: nowrap;" title="Duration löschen und mit Zeitstempel rechnen">
+                        <svg style="width:14px;height:14px;vertical-align:middle;margin-right:3px;" viewBox="0 0 24 24">
+                            <path fill="currentColor"
+                                d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
+                        </svg>
+                        Reset
+                    </button>
+                </div>
+                <span id="editDurationHint" class="subtitle"
+                    style="margin-top: 0.3rem; display: block; font-size: 0.8rem;"></span>
+            </div>
             <div class="modal-actions">
                 <button id="saveParticipant" class="btn btn-primary">Speichern</button>
                 <button id="cancelEdit" class="btn btn-outline">Abbrechen</button>
