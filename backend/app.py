@@ -49,7 +49,20 @@ def load_users():
     if not os.path.exists(USERS_FILE):
         # Create default admin user if file doesn't exist
         default_users = {
-            os.environ.get('ADMIN_USER', 'admin'): {"password": os.environ.get('ADMIN_PASS', 'password')}
+            os.environ.get('ADMIN_USER', 'admin'): {
+                "password": os.environ.get('ADMIN_PASS', 'password'),
+                "permissions": {
+                    "is_admin": True,
+                    "can_start": True,
+                    "can_stop": True,
+                    "can_edit_form": True,
+                    "can_edit_stats": True,
+                    "can_edit_participants": True,
+                    "can_add_participants": True,
+                    "can_edit_settings": True,
+                    "can_manage_users": True
+                }
+            }
         }
         print("Creating default admin user: " + os.environ.get('ADMIN_USER', 'admin'))
         with open(USERS_FILE, 'w') as f:
@@ -58,7 +71,42 @@ def load_users():
     
     try:
         with open(USERS_FILE, 'r') as f:
-            return json.load(f)
+            users = json.load(f)
+            # Ensure all users have permissions key
+            modified = False
+            for user, data in users.items():
+                if "permissions" not in data:
+                    # Grant admin ALL permissions, others NONE by default
+                    # Grant admin ALL permissions, others basic view by default
+                    if user == os.environ.get('ADMIN_USER', 'admin'):
+                        data["permissions"] = {
+                            "is_admin": True,
+                            "can_start": True,
+                            "can_stop": True,
+                            "can_edit_form": True,
+                            "can_edit_stats": True,
+                            "can_edit_participants": True,
+                            "can_add_participants": True,
+                            "can_edit_settings": True,
+                            "can_manage_users": True,
+                            "can_see_all": True,
+                            "hide_ranking": False,
+                            "hide_duration": False
+                        }
+                    else:
+                        data["permissions"] = {
+                            "can_see_all": True,
+                            "hide_ranking": False,
+                            "hide_duration": False
+                        }
+                    modified = True
+                
+                if "race_access" not in data:
+                    data["race_access"] = {}
+                    modified = True
+            if modified:
+                save_users(users)
+            return users
     except Exception:
         return {}
 
@@ -82,6 +130,60 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def permission_required(perm):
+    """
+    Decorator to check if the current user has a specific permission.
+    If the user has 'is_admin' permission, all checks pass.
+    """
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not session.get('logged_in'):
+                return {'message': 'Authentication required'}, 401
+            
+            permissions = session.get('permissions', {})
+            # Admin override
+            if permissions.get('is_admin'):
+                return f(*args, **kwargs)
+            
+            # Fresh lookup for race specific access
+            username = session.get('user')
+            users = load_users()
+            user_data = users.get(username, {})
+            race_access = user_data.get('race_access', {})
+            
+            race_name = kwargs.get('race_name')
+            # Need race-specific context check
+            if race_name:
+                # If can_see_all is enabled, user has access to all races
+                # Fallback path: race_access -> global default
+                if permissions.get('can_see_all'):
+                    # Check for explicit override first
+                    if race_name in race_access:
+                        race_perms = race_access[race_name]
+                        if not race_perms.get(perm):
+                            return {'message': f"Permission denied for race {race_name} (Override): {perm}"}, 403
+                    else:
+                        # No override, use global permission
+                        if not permissions.get(perm):
+                             return {'message': f"Global permission denied for race {race_name}: {perm}"}, 403
+                else:
+                    # Selective access: must be in race_access
+                    if race_name not in race_access:
+                         return {'message': f"No access to race: {race_name}"}, 403
+                    
+                    race_perms = race_access[race_name]
+                    if not race_perms.get(perm):
+                        return {'message': f"Permission denied for race {race_name}: {perm}"}, 403
+            else:
+                # Global resource check
+                if not permissions.get(perm):
+                    return {'message': f"Global permission denied: {perm}"}, 403
+            
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
+
 # Authentication Endpoints
 @auth_ns.route('/login')
 class Login(Resource):
@@ -96,43 +198,101 @@ class Login(Resource):
         if username in users and users[username]["password"] == password:
             session['logged_in'] = True
             session['user'] = username
+            session['permissions'] = users[username].get("permissions", {})
+            session['race_access'] = users[username].get("race_access", {})
             print("Login successful for user: " + username)
 
             session.permanent = True  # Make cookie persistent
-            return {'status': 'success', 'message': 'Logged in successfully'}, 200
+            return {
+                'status': 'success', 
+                'message': 'Logged in successfully',
+                'user': username,
+                'permissions': users[username].get("permissions", {}),
+                'race_access': users[username].get("race_access", {})
+            }, 200
         
         return {'status': 'error', 'message': 'Invalid credentials'}, 401
 
 @auth_ns.route('/users')
 class UserList(Resource):
-    @login_required
+    @permission_required('can_manage_users')
     def get(self):
-        """List all users (usernames only)"""
+        """List all users (with permissions)"""
         users = load_users()
-        return list(users.keys()), 200
+        result = []
+        for username, data in users.items():
+            result.append({
+                "username": username,
+                "permissions": data.get("permissions", {}),
+                "race_access": data.get("race_access", {})
+            })
+        return result, 200
 
-    @login_required
+    @permission_required('can_manage_users')
     def post(self):
         """Create or update a user"""
         data = request.json
         username = data.get('username')
         password = data.get('password')
-        if not username or not password:
-            abort(400, "Username and password required")
+        permissions = data.get('permissions', {})
+        
+        race_access = data.get('race_access', {})
+        
+        if not username:
+            abort(400, "Username required")
         
         users = load_users()
-        users[username] = {"password": password}
+        current_username = session.get('user')
+        current_user_is_admin = session.get('permissions', {}).get('is_admin')
+
+        # MANAGER RESTRICTIONS
+        if not current_user_is_admin:
+            # 1. Cannot grant is_admin
+            if permissions.get('is_admin'):
+                return {'message': 'Nur System-Admins können Admin-Rechte vergeben.'}, 403
+            
+            # 2. Cannot edit existing admin accounts
+            if username in users and users[username].get('permissions', {}).get('is_admin'):
+                return {'message': 'System-Administratoren können nicht von Managern bearbeitet werden.'}, 403
+            
+            # 3. Cannot edit self (prevent privilege escalation/self lockout)
+            if username == current_username:
+                 return {'message': 'Sie können Ihren eigenen User nicht über die Benutzerverwaltung bearbeiten (nutzen Sie "Mein Profil").'}, 403
+
+        # If user exists, optionally keep password if not provided
+        if username in users:
+            if not password:
+                password = users[username]["password"]
+        elif not password:
+             abort(400, "Password required for new user")
+
+        users[username] = {
+            "password": password,
+            "permissions": permissions,
+            "race_access": race_access
+        }
         save_users(users)
         return {'status': 'success'}, 200
 
 @auth_ns.route('/users/<string:username>')
 class UserDetail(Resource):
-    @login_required
+    @permission_required('can_manage_users')
     def delete(self, username):
         """Delete a user"""
         users = load_users()
+        current_username = session.get('user')
+        current_user_is_admin = session.get('permissions', {}).get('is_admin')
+
         if username not in users:
             abort(404, "User not found")
+        
+        # MANAGER RESTRICTIONS
+        if not current_user_is_admin:
+             if users[username].get('permissions', {}).get('is_admin'):
+                 return {'message': 'System-Administratoren können nicht gelöscht werden.'}, 403
+             if username == current_username:
+                 return {'message': 'Sie können sich nicht selbst löschen.'}, 403
+
         if len(users) <= 1:
             abort(400, "Cannot delete the last user")
         
@@ -144,15 +304,51 @@ class UserDetail(Resource):
 class Logout(Resource):
     def post(self):
         """Logout from the application"""
-        session.pop('logged_in', None)
+        session.clear()
         return {'status': 'success', 'message': 'Logged out successfully'}, 200
+
+@auth_ns.route('/profile')
+class UserProfile(Resource):
+    def post(self):
+        """Allow user to change their own password"""
+        if not session.get('logged_in'):
+             return {'message': 'Authentication required'}, 401
+        
+        username = session.get('user')
+        data = request.json
+        new_password = data.get('password')
+        
+        if not new_password:
+             abort(400, "New password required")
+             
+        users = load_users()
+        if username in users:
+            users[username]["password"] = new_password
+            save_users(users)
+            return {'status': 'success'}, 200
+        
+        abort(404, "User not found")
 
 @auth_ns.route('/status')
 class AuthStatus(Resource):
     def get(self):
-        """Check authentication status"""
+        """Check authentication status with fresh permissions"""
         if session.get('logged_in'):
-            return {'logged_in': True, 'user': session['user']}
+            username = session.get('user')
+            users = load_users()
+            user_data = users.get(username, {})
+            perms = user_data.get("permissions", {})
+            race_access = user_data.get("race_access", {})
+            
+            # Also update session to be sure
+            session['permissions'] = perms
+            
+            return {
+                'logged_in': True, 
+                'user': username,
+                'permissions': perms,
+                'race_access': race_access
+            }
         return {'logged_in': False}, 200
 
 
@@ -212,22 +408,35 @@ person_model = api.model('Person', {
 class RaceList(Resource):
     @login_required
     def get(self):
-        """List all available race files"""
-        files = [f.replace('.json', '') for f in os.listdir(DATA_DIR) if f.endswith('.json')]
-        return sorted(files, reverse=True)
+        """List all available race files (filtered by permission)"""
+        all_files = [f.replace('.json', '') for f in os.listdir(DATA_DIR) if f.endswith('.json')]
+        
+        username = session.get('user')
+        users = load_users()
+        user_data = users.get(username, {})
+        perms = user_data.get('permissions', {})
+        race_access = user_data.get('race_access', {})
+        
+        # Admins and users with 'can_see_all' see all races
+        if perms.get('is_admin') or perms.get('can_see_all'):
+            return sorted(all_files, reverse=True)
+            
+        # Others only see assigned races
+        visible_races = [r for r in all_files if r in race_access]
+        return sorted(visible_races, reverse=True)
 
 @ns.route('/<string:race_name>/people')
 class PersonList(Resource):
     @ns.marshal_list_with(person_model)
-    @login_required
+    @permission_required('can_see_all')
     def get(self, race_name):
         """List all people in a specific race"""
         data = load_data(race_name)
         return data['people']
 
-    @login_required
+    @permission_required('can_edit_participants')
     def put(self, race_name):
-        """Import people into a specific race"""
+        """Import or update people in a specific race"""
         people = request.json
         data = load_data(race_name)
         data['people'] = people
@@ -235,9 +444,9 @@ class PersonList(Resource):
         return data['people'], 201
     
 @ns.route('/<string:race_name>/people/append')
-class PersonList(Resource):
+class PersonAppend(Resource):
     @ns.marshal_list_with(person_model)
-    @login_required
+    @permission_required('can_add_participants')
     def post(self, race_name):
         """Append People to a specific race"""
         people = request.json
@@ -248,13 +457,13 @@ class PersonList(Resource):
 
 @ns.route('/<string:race_name>/settings')
 class RaceSettings(Resource):
-    @login_required
+    @permission_required('can_see_all')
     def get(self, race_name):
         """Get race settings"""
         data = load_data(race_name)
         return data.get('settings', {})
 
-    @login_required
+    @permission_required('can_edit_settings')
     def post(self, race_name):
         """Update race settings"""
         settings = request.json
@@ -419,7 +628,7 @@ class PublicParticipants(Resource):
 
 @ns.route('/<string:race_name>/full')
 class FullData(Resource):
-    @login_required
+    @permission_required('can_see_all')
     def get(self, race_name):
         """Get full race data as JSON"""
         return load_data(race_name)
@@ -434,7 +643,7 @@ class FullData(Resource):
 
 @ns.route('/<string:race_name>/start/<int:start_number>')
 class StartPerson(Resource):
-    @login_required
+    @permission_required('can_start')
     def post(self, race_name, start_number):
         data = load_data(race_name)
         # Use client timestamp if provided, else server time
@@ -455,7 +664,7 @@ class StartPerson(Resource):
 
 @ns.route('/<string:race_name>/stop/<int:start_number>')
 class StopPerson(Resource):
-    @login_required
+    @permission_required('can_stop')
     def post(self, race_name, start_number):
         data = load_data(race_name)
         # Use client timestamp if provided, else server time
@@ -480,7 +689,7 @@ class StopPerson(Resource):
 
 @ns.route('/<string:race_name>/delete')
 class DeleteRace(Resource):
-    @login_required
+    @permission_required('can_edit_settings')
     def delete(self, race_name):
         """Delete a race file"""
         path = get_race_path(race_name)
@@ -491,9 +700,7 @@ class DeleteRace(Resource):
 
 @ns.route('/<string:race_name>/export')
 class ExportRace(Resource):
-    # Depending on requirements, export might not need login or is strictly checked.
-    # Assuming login is needed for safety.
-    @login_required
+    @permission_required('can_see_all')
     def get(self, race_name):
         """Export race data as CSV"""
         data = load_data(race_name)
@@ -511,7 +718,7 @@ class ExportRace(Resource):
 
 @ns.route('/<string:race_name>/pdfs')
 class SignedPdfList(Resource):
-    @login_required
+    @permission_required('can_see_all')
     def get(self, race_name):
         """List all signed PDFs for a race"""
         race_signed_dir = os.path.join(SIGNED_DIR, race_name)
@@ -526,7 +733,7 @@ class SignedPdfList(Resource):
 
 @ns.route('/<string:race_name>/pdf/<string:filename>')
 class DownloadSignedPdf(Resource):
-    @login_required
+    @permission_required('can_see_all')
     def get(self, race_name, filename):
         """Download a specific signed PDF"""
         try:

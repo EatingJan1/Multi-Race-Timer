@@ -73,6 +73,40 @@ body {
     }
 }
 
+/* No Permission Overlay */
+.no-permission-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(15, 23, 42, 0.85);
+    /* Deep slate with high opacity */
+    backdrop-filter: blur(15px);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.overlay-content {
+    text-align: center;
+    max-width: 500px;
+    padding: 3rem;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
 /* Typography */
 header {
     margin-bottom: 3rem;
@@ -602,6 +636,68 @@ h1 {
     height: auto;
 }
 
+/* Permission Grid for User Modal */
+.permission-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.permission-item {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 1rem;
+    transition: all 0.2s ease;
+}
+
+.permission-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.permission-item .check-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding-left: 30px;
+    /* Space for absolute checkmark */
+    cursor: pointer;
+}
+
+.permission-item .check-container .checkmark {
+    top: 5px;
+    /* Align with first line */
+}
+
+.perm-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.perm-info strong {
+    font-size: 0.95rem;
+    color: #fff;
+}
+
+.perm-info span {
+    font-size: 0.8rem;
+    opacity: 0.6;
+    line-height: 1.4;
+}
+
+.admin-primary {
+    background: rgba(99, 102, 241, 0.05);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+@media (max-width: 600px) {
+    .permission-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .import-btn {
     border-color: rgba(99, 102, 241, 0.5);
     color: var(--primary);
@@ -856,13 +952,30 @@ tr.active-row td {
 }
 
 .modal-content {
-    max-width: 550px;
-    width: 90%;
-    padding: 2rem;
+    background: #1e293b;
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    padding: 2.5rem;
+    border-radius: 28px;
+    width: 600px;
+    max-width: 95vw;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
-    border-radius: 28px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlide {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
 }
 
 
@@ -3014,4 +3127,67 @@ input:checked+.switch-slider:before {
         font-size: 1.1rem !important;
         border-radius: 12px;
     }
+}
+
+/* User Management Enhancements */
+.modal-body-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modal-body-scroll::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}
+
+.permission-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+}
+
+.user-race-section {
+    position: relative;
+}
+
+.race-access-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.add-race-box {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1.25rem;
+    border-radius: 16px;
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.user-list-toolbar .search-box input:focus {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 4px rgba(62, 107, 255, 0.1);
+}
+
+.user-table.tiny {
+    font-size: 0.85rem;
+}
+
+.user-table.tiny td {
+    padding: 0.75rem 1rem;
+}
+
+.admin-primary .checkmark {
+    border-color: rgba(255, 120, 40, 0.4) !important;
+}
+
+.admin-primary input:checked~.checkmark {
+    background: #ff7828 !important;
+    border-color: #ff7828 !important;
 }

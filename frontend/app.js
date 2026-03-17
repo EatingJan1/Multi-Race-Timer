@@ -16,6 +16,7 @@ let editingIndex = -1;
 let uploadedLogoData = null;
 let currentRaceSettings = {};
 let signaturePad = null;
+let currentEditingUserGlobalPerms = {}; // Store for baseline pre-fill
 let pdfTextFields = [];
 let isRegistrationPreview = false;
 let isKioskMode = false;
@@ -23,6 +24,45 @@ let publicParticipants = [];
 let publicRaceData = null;
 let isAppendMode = false; // Flag for import mode
 let pendingAppend = []; // Temporary storage for append preview
+
+let userPermissions = {};
+
+function hasPermission(perm) {
+    const globalOnly = ['can_manage_users']; // can_manage_users is global. Others are race-contextual if selected.
+    const isGlobalAdmin = userPermissions.permissions && userPermissions.permissions.is_admin;
+    const canSeeAll = userPermissions.permissions && userPermissions.permissions.can_see_all;
+
+    // Admin override
+    if (isGlobalAdmin) return true;
+
+    // Priority 1: Global permission for global tasks
+    if (globalOnly.includes(perm)) {
+        return !!userPermissions.permissions && !!userPermissions.permissions[perm];
+    }
+
+    // Priority 2: Race specific context
+    if (currentRace) {
+        // If canSeeAll is active, we have access to every race
+        if (canSeeAll) {
+            // Check for explicit override first
+            if (userPermissions.race_access && userPermissions.race_access[currentRace]) {
+                return !!userPermissions.race_access[currentRace][perm];
+            }
+            // Fallback to global setting for this race
+            return !!userPermissions.permissions && !!userPermissions.permissions[perm];
+        } else {
+            // Selective access ONLY: must be in race_access
+            if (userPermissions.race_access && userPermissions.race_access[currentRace]) {
+                return !!userPermissions.race_access[currentRace][perm];
+            }
+            // If a specific race is selected but user has no assignment, they have NO rights there
+            return false;
+        }
+    }
+
+    // Priority 3: Global fallback (e.g. before any race is selected, or for landing page)
+    return !!userPermissions.permissions && !!userPermissions.permissions[perm];
+}
 
 const DEFAULT_COLUMNS = [
     { id: 'number', label: 'STARTNR.', visible: true, required: true, key: 'number' },
@@ -131,6 +171,26 @@ const loginModal = document.getElementById('loginModal');
 const loginForm = document.getElementById('loginForm');
 const loginUser = document.getElementById('loginUser');
 const loginPass = document.getElementById('loginPass');
+
+// Race Specific Permissions Elements
+const userRaceList = document.getElementById('userRaceList');
+const addRaceSelect = document.getElementById('addRaceSelect');
+const addRaceAccessBtn = document.getElementById('addRaceAccessBtn');
+const racePermsModal = document.getElementById('racePermsModal');
+const racePermsTitle = document.getElementById('racePermsTitle');
+const racePermGrid = document.getElementById('racePermGrid');
+const saveRacePermsBtn = document.getElementById('saveRacePermsBtn');
+const closeRacePermsBtn = document.getElementById('closeRacePermsBtn');
+const raceAccessSection = document.getElementById('raceAccessSection');
+
+const userListSearch = document.getElementById('userListSearch');
+const rolePresetSelect = document.getElementById('rolePresetSelect');
+
+let currentEditingUserRaces = {}; // { "RaceName": { perm: true, ... } }
+let currentEditingRaceName = '';
+const globalPermKeys = ["is_admin", "can_start", "can_stop", "can_edit_form", "can_edit_stats", "can_edit_participants", "can_add_participants", "can_edit_settings", "can_manage_users", "can_see_all", "hide_ranking", "hide_duration"];
+
+let allUsersLocal = []; // Cache for searching
 const loginError = document.getElementById('loginError');
 const cancelLoginBtn = document.getElementById('cancelLoginBtn');
 
@@ -583,23 +643,56 @@ function hideAllViews() {
     if (registrationPage) registrationPage.style.display = 'none';
     if (adminApp) adminApp.style.display = 'none';
     if (publicResultsPage) publicResultsPage.style.display = 'none';
+
+    // Hide overlay when going to landing
+    const overlay = document.getElementById('noPermissionOverlay');
+    if (overlay) overlay.style.display = 'none';
 }
 
 async function showAdminApp() {
     hideAllViews();
     if (adminApp) adminApp.style.display = 'block';
-    await fetchSessions();
-    if (currentRace) {
-        sessionSelect.value = currentRace;
-        await fetchParticipants();
-        await fetchRaceSettings();
+
+    // 1. Fetch sessions first to know what's authorized
+    const sessions = await fetchSessions();
+
+    // 2. Ensure overlay starts hidden
+    const overlay = document.getElementById('noPermissionOverlay');
+    if (overlay) overlay.style.display = 'none';
+
+    // 3. Load last race if it exists and is allowed
+    const lastRace = localStorage.getItem('currentRace');
+    if (lastRace) {
+        const isAdmin = userPermissions.permissions && userPermissions.permissions.is_admin;
+        const canAccess = sessions.includes(lastRace) || isAdmin;
+
+        if (canAccess) {
+            currentRace = lastRace;
+            sessionSelect.value = lastRace;
+            await fetchParticipants();
+            updateSettingsUI();
+        } else {
+            console.log("Last race unauthorized or removed, clearing selection.");
+            currentRace = '';
+            localStorage.removeItem('currentRace');
+            sessionSelect.value = '';
+            updateSettingsUI();
+        }
+    } else {
+        currentRace = '';
+        updateSettingsUI();
     }
 }
 
 async function showLandingPage() {
     hideAllViews();
     if (landingPage) landingPage.style.display = 'block';
-    await fetchPublicRaces();
+
+    // Reset any race context
+    currentRace = '';
+    localStorage.removeItem('currentRace');
+
+    fetchPublicRaces();
 }
 
 if (backToLandingResultsBtn) backToLandingResultsBtn.onclick = showLandingPage;
@@ -1054,6 +1147,7 @@ async function checkAuthStatus() {
         if (res.ok) {
             const data = await res.json();
             if (data.logged_in) {
+                userPermissions = data; // Includes .permissions and .race_access
                 if (loginModal) loginModal.style.display = 'none';
                 return true;
             }
@@ -1077,6 +1171,8 @@ if (loginForm) {
                 credentials: 'include'
             });
             if (res.ok) {
+                const data = await res.json();
+                userPermissions = data.permissions || {};
                 loginModal.style.display = 'none';
                 loginError.style.display = 'none';
                 loginPass.value = '';
@@ -1085,6 +1181,7 @@ if (loginForm) {
                 loginError.style.display = 'block';
             }
         } catch (err) {
+            console.error("Login failed", err);
             loginError.textContent = "Verbindungsfehler";
             loginError.style.display = 'block';
         }
@@ -1104,7 +1201,90 @@ if (logoutBtn) {
     };
 }
 
+function updateUIPermissions() {
+    // Tab visibility
+    const navRace = document.getElementById('nav-tab-race');
+    const navLayout = document.getElementById('nav-tab-layout');
+    const navReg = document.getElementById('nav-tab-registration');
+    const navUsers = document.getElementById('nav-tab-users');
+    const navUsersLabel = document.getElementById('nav-tab-users-label');
+
+    if (navRace) navRace.style.display = hasPermission('can_edit_settings') ? 'flex' : 'none';
+    if (navLayout) navLayout.style.display = hasPermission('can_edit_settings') ? 'flex' : 'none';
+    if (navReg) navReg.style.display = (hasPermission('can_edit_form') || hasPermission('can_edit_stats')) ? 'flex' : 'none';
+
+    // Always show Users tab IF logged in, but change label if not admin
+    if (navUsers) {
+        navUsers.style.display = 'flex';
+        if (navUsersLabel) {
+            navUsersLabel.textContent = hasPermission('can_manage_users') ? 'Benutzer' : 'Mein Profil';
+        }
+    }
+
+    // Toggle views inside Users tab
+    const adminView = document.getElementById('adminUserView');
+    const profileView = document.getElementById('selfProfileView');
+    if (adminView) adminView.style.display = hasPermission('can_manage_users') ? 'block' : 'none';
+    // Profile is always editable for the current user
+    if (profileView) profileView.style.display = 'block';
+
+    // No Permission Overlay
+    const hasAnyRacePerm = hasPermission('can_start') || hasPermission('can_stop') ||
+        hasPermission('can_edit_participants') || hasPermission('can_add_participants') ||
+        hasPermission('can_edit_settings') || hasPermission('can_edit_form') ||
+        hasPermission('can_edit_stats') || hasPermission('can_see_all');
+
+    const isValidRace = currentRace && currentRace !== 'null' && currentRace !== 'undefined';
+
+    const overlay = document.getElementById('noPermissionOverlay');
+    if (overlay) {
+        // Overlay ONLY if there's an actual race selected, the user is not admin AND has no race perms
+        const isAdminProfile = userPermissions.permissions && userPermissions.permissions.is_admin;
+        const shouldShowOverlay = isValidRace && !isAdminProfile && !hasAnyRacePerm;
+        overlay.style.display = shouldShowOverlay ? 'flex' : 'none';
+
+        // Obfuscate the main timer and selected info too if no permission
+        if (shouldShowOverlay) {
+            if (mainTimer) mainTimer.textContent = '---';
+            if (activeName) activeName.textContent = 'KEINE BERECHTIGUNG';
+            if (activeStartNumber) activeStartNumber.textContent = '#--';
+            if (mainActionBtn) mainActionBtn.disabled = true;
+        }
+    }
+
+    // Toolbar actions
+    if (addParticipantBtn) addParticipantBtn.style.display = hasPermission('can_add_participants') ? 'flex' : 'none';
+    const importBtn = document.getElementById('importCsvBtn');
+    if (importBtn) importBtn.style.display = hasPermission('can_add_participants') || hasPermission('can_edit_settings') ? 'flex' : 'none';
+
+    // Delete Race button
+    const deleteBtn = document.getElementById('deleteSessionBtn');
+    if (deleteBtn) deleteBtn.style.display = hasPermission('can_edit_settings') ? 'flex' : 'none';
+
+    // Designer buttons within Registration tab
+    const designerBtn = document.getElementById('openFormDesignerBtn');
+    if (designerBtn) designerBtn.disabled = !hasPermission('can_edit_form');
+
+    // Stats settings
+    if (rankMethodBest) rankMethodBest.disabled = !hasPermission('can_edit_stats');
+    if (rankMethodAverage) rankMethodAverage.disabled = !hasPermission('can_edit_stats');
+
+    // Edit Mode Toggle
+    if (editSwitch) {
+        // If user can't edit, force off and disable
+        if (!hasPermission('can_edit_participants')) {
+            editMode = false;
+            editSwitch.checked = false;
+            editSwitch.disabled = true;
+            localStorage.setItem('editMode', false);
+        } else {
+            editSwitch.disabled = false;
+        }
+    }
+}
+
 function updateSettingsUI() {
+    updateUIPermissions();
     if (modeSwitch) modeSwitch.checked = (startMode === 'delayed');
     if (editSwitch) editSwitch.checked = editMode;
     if (editActionsView) editActionsView.style.display = (editMode && currentRace) ? 'block' : 'none';
@@ -1172,8 +1352,10 @@ async function fetchSessions() {
             sessionSelect.appendChild(opt);
         });
         sessionSelect.value = prevValue;
+        return sessions;
     } catch (err) {
         console.error('Failed to fetch sessions', err);
+        return [];
     }
 }
 
@@ -1255,7 +1437,16 @@ function renderTable() {
     if (!raceBody) return;
 
     // 1. Render Header
-    const visibleCols = columnConfig.filter(c => c.visible);
+    let visibleCols = columnConfig.filter(c => c.visible);
+
+    // Permission-based column hiding
+    if (hasPermission('hide_ranking')) {
+        visibleCols = visibleCols.filter(col => col.id !== 'rank' && col.id !== 'gap');
+    }
+    if (hasPermission('hide_duration')) {
+        visibleCols = visibleCols.filter(col => col.id !== 'duration');
+    }
+
     raceTableHead.innerHTML = '';
 
     // Checkbox column header in edit mode
@@ -1282,6 +1473,17 @@ function renderTable() {
     raceBody.innerHTML = '';
 
     let displayList = participants.filter(p => !currentTag || (p.tags && p.tags.includes(currentTag)));
+
+    // Smart Filtering based on can_start / can_stop roles
+    if (!hasPermission('can_see_all')) {
+        if (hasPermission('can_stop') && !hasPermission('can_start')) {
+            // "Siehst du nur noch die die du stoppen kannst, und die beendeten"
+            displayList = displayList.filter(p => p.start_time);
+        } else if (hasPermission('can_start') && !hasPermission('can_stop')) {
+            // "Nur die die gestartet sind und die was Bereit sind"
+            displayList = displayList.filter(p => !p.end_time);
+        }
+    }
 
     // 2. Pre-calculate Ranks based on duration
     // Only calculate from timestamps if NO manual duration is set
@@ -1517,11 +1719,15 @@ function updateActiveDisplay() {
     }
 
     if (p.start_time && !p.end_time) {
-        mainActionBtn.textContent = 'STOP DRÜCKEN';
-        mainActionBtn.style.background = 'var(--accent-red)';
+        const canStop = hasPermission('can_stop');
+        mainActionBtn.textContent = canStop ? 'STOP DRÜCKEN' : 'STOPPEN (KEINE BERECHTIGUNG)';
+        mainActionBtn.style.background = canStop ? 'var(--accent-red)' : 'grey';
+        mainActionBtn.disabled = !canStop;
     } else {
-        mainActionBtn.textContent = 'START DRÜCKEN';
-        mainActionBtn.style.background = 'var(--accent-green)';
+        const canStart = hasPermission('can_start');
+        mainActionBtn.textContent = canStart ? 'START DRÜCKEN' : 'STARTEN (KEINE BERECHTIGUNG)';
+        mainActionBtn.style.background = canStart ? 'var(--accent-green)' : 'grey';
+        mainActionBtn.disabled = !canStart;
         mainTimer.textContent = p.duration ? p.duration.toFixed(1) + 's' : '00:00:00.0';
     }
 }
@@ -1529,6 +1735,18 @@ function updateActiveDisplay() {
 async function handleMainAction() {
     if (!currentRace || activeIndex === -1 || editMode) return;
     const p = participants[activeIndex];
+
+    // Permission Checks
+    const isReady = !p.start_time || p.end_time;
+    if (isReady && !hasPermission('can_start')) {
+        alert("Fehlende Berechtigung: Starten");
+        return;
+    }
+    if (!isReady && !hasPermission('can_stop')) {
+        alert("Fehlende Berechtigung: Stoppen");
+        return;
+    }
+
     const now = new Date().toISOString();
     if (!p.start_time || p.end_time) {
         if (startMode === 'delayed') {
@@ -2481,30 +2699,118 @@ tabButtons.forEach(btn => {
 async function fetchUsers() {
     try {
         const users = await apiCall('/users', 'GET', null, AUTH_BASE);
+        allUsersLocal = users;
         renderUserList(users);
     } catch (e) {
         console.error("Failed to fetch users", e);
     }
 }
 
+if (userListSearch) {
+    userListSearch.oninput = () => {
+        const query = userListSearch.value.toLowerCase();
+        const filtered = allUsersLocal.filter(u => u.username.toLowerCase().includes(query));
+        renderUserList(filtered);
+    };
+}
+
+if (rolePresetSelect) {
+    rolePresetSelect.onchange = () => {
+        const role = rolePresetSelect.value;
+        const config = {
+            admin: { is_admin: true, can_see_all: true },
+            timer: { can_start: true, can_stop: true, can_see_all: true },
+            manager: { can_edit_participants: true, can_add_participants: true, can_edit_settings: true, can_see_all: true },
+            observer: { can_see_all: true }
+        }[role];
+
+        if (!config) return;
+
+        const amIAdmin = userPermissions.permissions && userPermissions.permissions.is_admin;
+
+        globalPermKeys.forEach(key => {
+            const cb = document.getElementById(`perm-${key}`);
+            if (cb) {
+                // Non-admins cannot grant admin status via preset
+                if (key === 'is_admin' && config[key] && !amIAdmin) {
+                    cb.checked = false;
+                } else {
+                    cb.checked = !!config[key];
+                }
+            }
+        });
+    };
+}
+
 function renderUserList(users) {
     userListBody.innerHTML = '';
-    users.forEach(username => {
+    const amIAdmin = userPermissions.permissions && userPermissions.permissions.is_admin;
+    const myUsername = userPermissions.user;
+
+    users.forEach(u => {
+        const username = u.username;
+        const permissions = u.permissions || {};
+        const race_access = u.race_access || {};
+        const isTargetAdmin = !!permissions.is_admin;
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${username}</strong></td>
+            <td><strong>${username}${isTargetAdmin ? ' <span style="font-size:0.7rem; color:var(--accent-orange);">[ADMIN]</span>' : ''}</strong></td>
             <td style="text-align:right">
-                <button class="btn btn-outline tiny edit-user" data-user="${username}">Passwort ändern</button>
-                <button class="btn btn-outline danger-text tiny delete-user" data-user="${username}">Löschen</button>
+                <button class="btn btn-outline tiny edit-user">Bearbeiten</button>
+                <button class="btn btn-outline danger-text tiny delete-user">Löschen</button>
             </td>
         `;
 
-        tr.querySelector('.edit-user').onclick = () => {
-            userEditArea.style.display = 'block';
-            userEditTitle.textContent = `Passwort ändern für ${username}`;
+        const editBtn = tr.querySelector('.edit-user');
+        const deleteBtn = tr.querySelector('.delete-user');
+
+        // Enforcement for non-admins
+        if (!amIAdmin) {
+            if (isTargetAdmin) {
+                editBtn.disabled = true;
+                editBtn.title = "Admins können nicht bearbeitet werden.";
+                deleteBtn.disabled = true;
+                deleteBtn.title = "Admins können nicht gelöscht werden.";
+            }
+            if (username === myUsername) {
+                editBtn.disabled = true;
+                editBtn.title = "Eigenen User über 'Mein Profil' bearbeiten.";
+                deleteBtn.disabled = true;
+                deleteBtn.title = "Sie können sich nicht selbst löschen.";
+            }
+        }
+
+        editBtn.onclick = async () => {
+            currentEditingUserGlobalPerms = permissions; // Set baseline for race overrides
+            document.getElementById('userEditModal').classList.add('active');
+            userEditTitle.textContent = `User: ${username}`;
             targetUsernameInput.value = username;
             targetUsernameInput.readOnly = true;
+            targetPasswordInput.value = '';
+            if (rolePresetSelect) rolePresetSelect.value = '';
             targetPasswordInput.focus();
+
+            // Set checkboxes
+            globalPermKeys.forEach(key => {
+                const cb = document.getElementById(`perm-${key}`);
+                if (cb) {
+                    cb.checked = !!permissions[key];
+                    // Non-admins cannot grant/revoke is_admin checkbox
+                    if (key === 'is_admin') {
+                        cb.disabled = !amIAdmin;
+                    }
+                }
+            });
+
+            // Handle Race Access
+            currentEditingUserRaces = JSON.parse(JSON.stringify(race_access));
+            renderUserRaceList();
+
+            populateAddRaceSelect();
+
+            // If user is admin, they don't really need selective race access displayed? 
+            // Better show it anyway for clarity if they toggle admin off.
         };
 
         tr.querySelector('.delete-user').onclick = () => deleteUser(username);
@@ -2513,27 +2819,160 @@ function renderUserList(users) {
     });
 }
 
+function populateAddRaceSelect() {
+    addRaceSelect.innerHTML = '<option value="">-- Rennen wählen --</option>';
+    Array.from(sessionSelect.options).forEach(opt => {
+        if (opt.value) {
+            const o = document.createElement('option');
+            o.value = opt.value;
+            o.textContent = opt.textContent;
+            addRaceSelect.appendChild(o);
+        }
+    });
+}
+
+function renderUserRaceList() {
+    userRaceList.innerHTML = '';
+    const races = Object.keys(currentEditingUserRaces);
+    if (races.length === 0) {
+        userRaceList.innerHTML = '<tr><td colspan="2" style="text-align:center; color:var(--text-muted); padding: 1rem;">Kein selektiver Zugriff zugewiesen.</td></tr>';
+        return;
+    }
+
+    races.forEach(raceName => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${raceName.replace(/_/g, ' ')}</td>
+            <td style="text-align:right">
+                <button class="btn btn-outline tiny edit-race-perms">Rechte...</button>
+                <button class="btn btn-outline danger-text tiny remove-race-access">Entfernen</button>
+            </td>
+        `;
+        tr.querySelector('.edit-race-perms').onclick = () => openRacePermsModal(raceName);
+        tr.querySelector('.remove-race-access').onclick = () => {
+            delete currentEditingUserRaces[raceName];
+            renderUserRaceList();
+        };
+        userRaceList.appendChild(tr);
+    });
+}
+
+function openRacePermsModal(raceName) {
+    currentEditingRaceName = raceName;
+    racePermsTitle.textContent = `Rechte für: ${raceName.replace(/_/g, ' ')}`;
+    racePermsModal.classList.add('active');
+
+    const perms = currentEditingUserRaces[raceName] || {};
+
+    // Create grid nodes if empty
+    if (racePermGrid.children.length === 0) {
+        racePermGrid.innerHTML = '';
+        globalPermKeys.forEach(key => {
+            // Skip is_admin and can_manage_users for race-specific perms? 
+            // Admin says: "identisch zu globalen einstellungen". So let's include relevant ones.
+            if (key === 'is_admin' || key === 'can_manage_users') return;
+
+            const label = document.getElementById(`perm-${key}`).closest('.permission-item').cloneNode(true);
+            const input = label.querySelector('input');
+            input.id = `rp-${key}`;
+            racePermGrid.appendChild(label);
+        });
+    }
+
+    // Baseline from global perms if this is its first time being configured or if newly added
+    const baseline = Object.keys(perms).length === 0 ? currentEditingUserGlobalPerms : perms;
+
+    // Set values
+    globalPermKeys.forEach(key => {
+        if (key === 'is_admin' || key === 'can_manage_users') return;
+        const cb = document.getElementById(`rp-${key}`);
+        if (cb) {
+            // If perms was empty, we use baseline. If not, we use perms.
+            cb.checked = !!baseline[key];
+        }
+    });
+}
+
+saveRacePermsBtn.onclick = () => {
+    const perms = {};
+    globalPermKeys.forEach(key => {
+        if (key === 'is_admin' || key === 'can_manage_users') return;
+        const cb = document.getElementById(`rp-${key}`);
+        if (cb && cb.checked) perms[key] = true;
+    });
+    currentEditingUserRaces[currentEditingRaceName] = perms;
+    racePermsModal.classList.remove('active');
+};
+
+closeRacePermsBtn.onclick = () => racePermsModal.classList.remove('active');
+
+addRaceAccessBtn.onclick = () => {
+    const raceName = addRaceSelect.value;
+    if (!raceName) return;
+    if (currentEditingUserRaces[raceName]) return alert("Benutzer hat bereits Zugriff!");
+
+    // Default: copy global perms (as requested)
+    const permissions = {};
+    globalPermKeys.forEach(key => {
+        if (key === 'is_admin' || key === 'can_manage_users') return;
+        const cb = document.getElementById(`perm-${key}`);
+        if (cb && cb.checked) permissions[key] = true;
+    });
+
+    currentEditingUserRaces[raceName] = permissions;
+    renderUserRaceList();
+};
+
 addUserBtn.onclick = () => {
-    userEditArea.style.display = 'block';
+    document.getElementById('userEditModal').classList.add('active');
     userEditTitle.textContent = 'Neuer Benutzer';
     targetUsernameInput.value = '';
     targetUsernameInput.readOnly = false;
     targetPasswordInput.value = '';
+    if (rolePresetSelect) rolePresetSelect.value = '';
+
+    currentEditingUserRaces = {};
+    renderUserRaceList();
+
+    // Reset permissions
+    globalPermKeys.forEach(key => {
+        const cb = document.getElementById(`perm-${key}`);
+        if (cb) cb.checked = (key === 'can_see_all'); // Default to true
+    });
+
+    populateAddRaceSelect();
+
     targetUsernameInput.focus();
 };
 
 cancelUserEditBtn.onclick = () => {
-    userEditArea.style.display = 'none';
+    document.getElementById('userEditModal').classList.remove('active');
 };
 
 saveUserBtn.onclick = async () => {
     const username = targetUsernameInput.value;
     const password = targetPasswordInput.value;
-    if (!username || !password) return alert("Benutzername und Passwort erforderlich!");
+
+    if (!username) return alert("Benutzername erforderlich!");
+    // For existing users, password can be empty (keep current)
+    const isNew = !targetUsernameInput.readOnly;
+    if (isNew && !password) return alert("Passwort erforderlich!");
+
+    const globalPermKeys = ["is_admin", "can_start", "can_stop", "can_edit_form", "can_edit_stats", "can_edit_participants", "can_add_participants", "can_edit_settings", "can_manage_users", "can_see_all", "hide_ranking", "hide_duration"];
+    const permissions = {};
+    globalPermKeys.forEach(key => {
+        const cb = document.getElementById(`perm-${key}`);
+        if (cb && cb.checked) permissions[key] = true;
+    });
 
     try {
-        await apiCall('/users', 'POST', { username, password }, AUTH_BASE);
-        userEditArea.style.display = 'none';
+        await apiCall('/users', 'POST', {
+            username,
+            password,
+            permissions,
+            race_access: currentEditingUserRaces
+        }, AUTH_BASE);
+        document.getElementById('userEditModal').classList.remove('active');
         fetchUsers();
     } catch (e) {
         alert("Speichern fehlgeschlagen: " + e.message);
@@ -2548,6 +2987,32 @@ async function deleteUser(username) {
     } catch (e) {
         alert("Löschen fehlgeschlagen: " + e.message);
     }
+}
+
+const saveProfileBtn = document.getElementById('saveProfileBtn');
+if (saveProfileBtn) {
+    saveProfileBtn.onclick = async () => {
+        const password = document.getElementById('selfNewPassword').value;
+        const msg = document.getElementById('profileMessage');
+
+        if (!password || password.length < 8) {
+            alert("Das Passwort muss mindestens 8 Zeichen lang sein.");
+            return;
+        }
+
+        try {
+            await apiCall('/profile', 'POST', { password }, AUTH_BASE);
+            if (msg) {
+                msg.textContent = "Passwort erfolgreich gespeichert!";
+                msg.style.color = "var(--accent-green)";
+                msg.style.display = "block";
+                document.getElementById('selfNewPassword').value = '';
+                setTimeout(() => { msg.style.display = 'none'; }, 3000);
+            }
+        } catch (e) {
+            alert("Fehler beim Speichern: " + e.message);
+        }
+    };
 }
 
 if (modeSwitch) modeSwitch.onchange = () => {

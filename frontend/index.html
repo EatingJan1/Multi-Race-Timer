@@ -40,6 +40,20 @@
             <span>Verbindung zum Backend verloren - Bitte Backend starten!</span>
         </div>
     </div>
+    <div id="noPermissionOverlay" class="no-permission-overlay" style="display: none;">
+        <div class="overlay-content card">
+            <svg style="width:64px;height:64px;color:var(--accent-red);margin-bottom:1.5rem;" viewBox="0 0 24 24">
+                <path fill="currentColor"
+                    d="M12,17A2,2 0 0,0 14,15C14,13.89 13.11,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z" />
+            </svg>
+            <h1>Keine Berechtigung</h1>
+            <p class="subtitle">Sie haben keine Berechtigung, die Daten dieses Rennens einzusehen oder zu bearbeiten.
+            </p>
+            <div style="margin-top:2rem;">
+                <button onclick="showLandingPage()" class="btn btn-primary">Zurück zum Portal</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Landing Page View -->
     <div id="landingPage" class="landing-container" style="display: none;">
@@ -252,7 +266,7 @@
                         <h2>System Control</h2>
                     </div>
                     <nav class="settings-tabs">
-                        <button class="tab-btn active" data-tab="tab-race">
+                        <button id="nav-tab-race" class="tab-btn active" data-tab="tab-race">
                             <span class="tab-icon">
                                 <svg viewBox="0 0 24 24">
                                     <path fill="currentColor" d="M14.4,6L14,4H5V21H7V14H12.6L13,16H20V6H14.4Z" />
@@ -260,7 +274,7 @@
                             </span>
                             Rennen
                         </button>
-                        <button class="tab-btn" data-tab="tab-layout">
+                        <button id="nav-tab-layout" class="tab-btn" data-tab="tab-layout">
                             <span class="tab-icon">
                                 <svg viewBox="0 0 24 24">
                                     <path fill="currentColor"
@@ -269,7 +283,7 @@
                             </span>
                             Layout
                         </button>
-                        <button class="tab-btn" data-tab="tab-registration">
+                        <button id="nav-tab-registration" class="tab-btn" data-tab="tab-registration">
                             <span class="tab-icon">
                                 <svg viewBox="0 0 24 24">
                                     <path fill="currentColor"
@@ -278,34 +292,17 @@
                             </span>
                             Anmeldung
                         </button>
-                        <button class="tab-btn" data-tab="tab-users">
+                        <button id="nav-tab-users" class="tab-btn" data-tab="tab-users">
                             <span class="tab-icon">
                                 <svg viewBox="0 0 24 24">
                                     <path fill="currentColor"
                                         d="M16 17V19H2V17S2 13 9 13 16 17 16 17M12.5 7.5A3.5 3.5 0 1 0 9 11A3.5 3.5 0 0 0 12.5 7.5M15.94 13A5.37 5.37 0 0 1 18 17V19H22V17S22 13.37 15.94 13M15 4A3.5 3.5 0 1 0 19 7.5A3.5 3.5 0 0 0 15 4Z" />
                                 </svg>
                             </span>
-                            Benutzer
+                            <span id="nav-tab-users-label">Benutzer</span>
                         </button>
                     </nav>
                     <div class="settings-sidebar-footer">
-                        <!-- Moved user edit area here per user request -->
-                        <div id="userEditArea" class="user-edit-panel sidebar-edit" style="display:none;">
-                            <h4 id="userEditTitle">Benutzer</h4>
-                            <div class="form-group">
-                                <label>Name</label>
-                                <input type="text" id="targetUsername" class="form-input tiny" placeholder="Name">
-                            </div>
-                            <div class="form-group">
-                                <label>Passwort</label>
-                                <input type="password" id="targetPassword" class="form-input tiny"
-                                    placeholder="Passwort">
-                            </div>
-                            <div class="form-actions-mini">
-                                <button id="saveUserBtn" class="btn btn-primary tiny">OK</button>
-                                <button id="cancelUserEditBtn" class="btn btn-outline tiny">X</button>
-                            </div>
-                        </div>
                         <button id="logoutBtn" class="btn btn-outline danger-text" style="width:100%">Abmelden</button>
                     </div>
                 </aside>
@@ -393,30 +390,65 @@
 
                     <!-- Tab: User Management -->
                     <div id="tab-users" class="tab-pane">
-                        <div class="pane-header">
-                            <h3>Benutzerverwaltung</h3>
-                            <p class="subtitle">Administratoren hinzufügen oder Passwörter ändern</p>
+                        <div id="selfProfileView">
+                            <div class="pane-header">
+                                <h3>Mein Profil</h3>
+                                <p class="subtitle">Passwort für Ihren Account ändern</p>
+                            </div>
+
+                            <div class="card"
+                                style="max-width:400px; margin: 2rem 1.5rem; background: rgba(255,255,255,0.02); border-radius: 16px; padding: 2rem;">
+                                <div class="setting-item" style="margin-bottom: 1.5rem; display:block;">
+                                    <label style="display:block; margin-bottom: 0.5rem; color: var(--text-muted);">Neues
+                                        Passwort</label>
+                                    <input type="password" id="selfNewPassword" class="form-input"
+                                        placeholder="Mind. 8 Zeichen" style="width:100%">
+                                </div>
+                                <div style="margin-top:1.5rem">
+                                    <button id="saveProfileBtn" class="btn btn-primary" style="width:100%">Passwort
+                                        Speichern</button>
+                                </div>
+                                <p id="profileMessage"
+                                    style="margin-top:1rem; font-size: 0.85rem; display:none; text-align:center;"></p>
+                            </div>
                         </div>
 
-                        <div class="user-list-toolbar">
-                            <button id="addUserBtn" class="btn btn-primary tiny">Benutzer hinzufügen</button>
-                        </div>
+                        <div id="adminUserView" style="display:none;">
+                            <div class="divider"
+                                style="margin: 2rem 0; background: rgba(255,255,255,0.05); height: 1px; width: 100%;">
+                            </div>
+                            <div class="pane-header">
+                                <h3>Benutzerverwaltung</h3>
+                                <p class="subtitle">Administratoren hinzufügen oder Passwörter ändern</p>
+                            </div>
 
-                        <div class="user-table-wrapper">
-                            <table class="user-table">
-                                <thead>
-                                    <tr>
-                                        <th>Benutzername</th>
-                                        <th style="text-align:right">Aktionen</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="userListBody">
-                                    <!-- Populated by JS -->
-                                </tbody>
-                            </table>
-                        </div>
+                            <div class="user-list-toolbar"
+                                style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem;">
+                                <button id="addUserBtn" class="btn btn-primary tiny">Benutzer hinzufügen</button>
+                                <div class="search-box" style="flex: 1; position: relative;">
+                                    <input type="text" id="userListSearch" class="form-input tiny"
+                                        placeholder="Benutzer suchen..."
+                                        style="width: 100%; margin: 0; padding-left: 2.5rem; background: rgba(255,255,255,0.02);">
+                                    <span
+                                        style="position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); opacity: 0.3;">🔍</span>
+                                </div>
+                            </div>
 
-                        <!-- userEditArea moved to sidebar footer -->
+                            <div class="user-table-wrapper"
+                                style="border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.05);">
+                                <table class="user-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Benutzername</th>
+                                            <th style="text-align:right">Aktionen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="userListBody">
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Tab: Registration & Designer -->
@@ -996,6 +1028,242 @@
             </div>
         </div>
     </footer>
+
+    <!-- Edit User Modal -->
+    <div id="userEditModal" class="modal">
+        <div class="modal-content card" style="max-width: 750px; width: 95%;">
+            <div class="modal-header"
+                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h2 id="userEditTitle" style="margin: 0;">Benutzer bearbeiten</h2>
+                <div style="min-width: 200px;">
+                    <label
+                        style="display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">Rollen-Vorlage</label>
+                    <select id="rolePresetSelect" class="form-input tiny"
+                        style="margin: 0; background: rgba(255,255,255,0.05);">
+                        <option value="">-- Rolle wählen --</option>
+                        <option value="admin">System Admin</option>
+                        <option value="timer">Zeitnehmer (Start/Stop)</option>
+                        <option value="manager">Event-Manager (Teilnehmer/Set.)</option>
+                        <option value="observer">Beobachter (Read-only)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="modal-body-scroll"
+                style="max-height: calc(90vh - 200px); overflow-y: auto; padding-right: 0.5rem; margin-bottom: 1rem;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+                    <div class="form-group">
+                        <label>Benutzername</label>
+                        <input type="text" id="targetUsername" class="form-input" placeholder="Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Passwort (für Änderung)</label>
+                        <input type="password" id="targetPassword" class="form-input" placeholder="Beibehalten...">
+                    </div>
+                </div>
+
+                <div class="divider" style="margin: 2rem 0; opacity: 0.1;"></div>
+
+                <div class="pane-header" style="margin-bottom: 1.5rem;">
+                    <h3>Berechtigungen</h3>
+                    <p class="subtitle">Globale Standard-Rechte des Benutzers.</p>
+                </div>
+
+                <div id="permissionGrid" class="permission-grid">
+
+                    <div class="permission-item admin-primary">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-is_admin">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>System Admin</strong>
+                                <span>Voller Zugriff auf alle Funktionen.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_start">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Teilnehmer starten</strong>
+                                <span>Darf Läufe für Teilnehmer initiieren.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_stop">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Teilnehmer stoppen</strong>
+                                <span>Darf Zielzeiten für Teilnehmer erfassen.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_edit_participants">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Teilnehmer bearbeiten</strong>
+                                <span>Darf Namen, Startnummern und Zeiten korrigieren.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_add_participants">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Teilnehmer hinzufügen</strong>
+                                <span>Darf neue Personen anlegen oder Dateien importieren.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_edit_form">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Formular-Designer</strong>
+                                <span>Darf das Anmeldeformular und PDF-Design anpassen (Registration Tab).</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_edit_stats">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Statistik & Wertung</strong>
+                                <span>Darf Ranking-Methoden und öffentliche Ansicht ändern.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_edit_settings">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Einstellungen & Rennen</strong>
+                                <span>Darf Rennen löschen, erstellen und global konfigurieren (Rennen Tab).</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_manage_users">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Benutzerverwaltung</strong>
+                                <span>Darf andere Benutzer erstellen, bearbeiten oder löschen (Benutzer Tab).</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-can_see_all">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Alle Rennen anzeigen</strong>
+                                <span>Erlaubt Zugriff auf alle laufenden Rennen. (Selektive Zuweisungen dienen dann als
+                                    Vorrang-Override).</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-hide_ranking">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Ranking verstecken</strong>
+                                <span>Blendet Platzierungen und Rückstände für diesen Benutzer aus.</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="permission-item">
+                        <label class="check-container">
+                            <input type="checkbox" id="perm-hide_duration">
+                            <span class="checkmark"></span>
+                            <div class="perm-info">
+                                <strong>Dauer verstecken</strong>
+                                <span>Blendet die berechnete Dauer (Laufzeit) für diesen Benutzer aus.</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+            </div> <!-- End modal-body-scroll -->
+
+            <div class="modal-actions" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">
+                <div class="divider" style="margin: 2rem 0; opacity: 0.1;"></div>
+                <div class="pane-header">
+                    <h3>Rennen-Zugriff</h3>
+                    <p class="subtitle">Selektive Zuweisung für bestimmte Rennen.</p>
+                </div>
+
+                <div class="race-access-container">
+                    <div class="user-table-wrapper"
+                        style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <table class="user-table tiny">
+                            <thead>
+                                <tr>
+                                    <th>Rennen</th>
+                                    <th style="text-align:right">Aktionen</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userRaceList">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="add-race-box">
+                        <select id="addRaceSelect" class="form-input tiny" style="flex: 1; margin: 0;"></select>
+                        <button id="addRaceAccessBtn" class="btn btn-outline tiny" style="margin: 0;">Zuweisen</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="saveUserBtn" class="btn btn-primary" style="min-width: 140px;">Speichern</button>
+                <button id="cancelUserEditBtn" class="btn btn-outline">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Race Permissions Overlay Modal (Overrides per Race) -->
+    <div id="racePermsModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2 id="racePermsTitle">Rennen-Berechtigungen: Rennen_A</h2>
+            </div>
+            <p class="subtitle" style="margin-bottom: 1.5rem;">Spezifizierte Berechtigungen für dieses Rennen
+                (Überschreiben die globalen Einstellungen).</p>
+
+            <div id="racePermGrid" class="permission-grid" style="max-height: 400px; overflow-y: auto;">
+                <!-- Mirrored checkboxes but with different IDs (e.g. rp-can_start) -->
+            </div>
+
+            <div class="modal-actions"
+                style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1.5rem;">
+                <button id="saveRacePermsBtn" class="btn btn-primary">Übernehmen</button>
+                <button id="closeRacePermsBtn" class="btn btn-outline">Abbrechen</button>
+            </div>
+        </div>
+    </div>
 
     <script src="app.js"></script>
     <script src="footer-info.js"></script>
