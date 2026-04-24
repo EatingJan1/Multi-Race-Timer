@@ -43,6 +43,74 @@ function renderTagBadges(tags, extraClasses = '') {
     return `<div class="${classes}">${tags.map(tag => `<span class="tag-badge">${escapeHtml(tag)}</span>`).join('')}</div>`;
 }
 
+function replaceSvgNode(svg, iconName) {
+    if (!svg || svg.tagName.toLowerCase() !== 'svg') return;
+    if (!iconName) return;
+    if (svg.querySelector('defs')) return; // Keep non-icon SVG defs (e.g. filters)
+
+    const icon = document.createElement('iconify-icon');
+    icon.setAttribute('icon', iconName);
+    icon.setAttribute('aria-hidden', 'true');
+
+    const width = svg.getAttribute('width');
+    const height = svg.getAttribute('height');
+    if (width) icon.setAttribute('width', width);
+    if (height) icon.setAttribute('height', height);
+
+    const cls = svg.getAttribute('class');
+    if (cls) icon.setAttribute('class', cls);
+
+    const style = svg.getAttribute('style');
+    if (style) icon.setAttribute('style', style);
+
+    svg.replaceWith(icon);
+}
+
+function applyIconifyIcons() {
+    const mappedIcons = [
+        ['#backendError .error-content svg', 'mdi:alert-circle-outline'],
+        ['#noPermissionOverlay .overlay-content svg', 'mdi:lock-outline'],
+        ['#backToLandingBtn svg', 'mdi:arrow-left'],
+        ['#exportBtn svg', 'mdi:file-export-outline'],
+        ['#importCsvBtn svg', 'mdi:plus'],
+        ['#createEmptyRaceBtn svg', 'mdi:table-plus'],
+        ['.dropdown-content a[onclick*="csvFile"] svg', 'mdi:file-upload-outline'],
+        ['#settingsBtn svg', 'mdi:cog-outline'],
+        ['#nav-tab-race .tab-icon svg', 'mdi:flag-checkered'],
+        ['#nav-tab-layout .tab-icon svg', 'mdi:view-dashboard-outline'],
+        ['#nav-tab-registration .tab-icon svg', 'mdi:file-document-edit-outline'],
+        ['#nav-tab-users .tab-icon svg', 'mdi:account-group-outline'],
+        ['#addParticipantBtn svg', 'mdi:account-plus-outline'],
+        ['#appendParticipantsBtn svg', 'mdi:account-multiple-plus-outline'],
+        ['#bulkTagBtn svg', 'mdi:tag-plus-outline'],
+        ['#bulkDeleteBtn svg', 'mdi:trash-can-outline'],
+        ['#resetDurationBtn svg', 'mdi:trash-can-outline'],
+        ['#formDesignerModal .tool-btn[data-command="bold"] svg', 'mdi:format-bold'],
+        ['#formDesignerModal .tool-btn[data-command="italic"] svg', 'mdi:format-italic'],
+        ['#formDesignerModal .tool-btn[data-command="underline"] svg', 'mdi:format-underline'],
+        ['#formDesignerModal .tool-btn[data-command="justifyLeft"] svg', 'mdi:format-align-left'],
+        ['#formDesignerModal .tool-btn[data-command="justifyCenter"] svg', 'mdi:format-align-center'],
+        ['#formDesignerModal .tool-btn[data-command="justifyRight"] svg', 'mdi:format-align-right'],
+        ['#formDesignerModal .tool-btn[data-command="insertUnorderedList"] svg', 'mdi:format-list-bulleted'],
+        ['#formDesignerModal .tool-btn[data-command="insertOrderedList"] svg', 'mdi:format-list-numbered'],
+        ['#toggleFooterBtn svg', 'mdi:page-layout-footer'],
+        ['#formDesignerModal .dropdown-trigger svg', 'mdi:chevron-down']
+    ];
+
+    mappedIcons.forEach(([selector, icon]) => {
+        document.querySelectorAll(selector).forEach(svg => replaceSvgNode(svg, icon));
+    });
+
+    // Convert all remaining icon-like SVGs (except technical defs) to Iconify fallback.
+    document.querySelectorAll('svg').forEach(svg => {
+        if (svg.closest('svg[style*="display: none"]')) return;
+        if (svg.querySelector('defs')) return;
+        replaceSvgNode(svg, 'mdi:help-circle-outline');
+    });
+}
+
+
+
 function hasPermission(perm) {
     const globalOnly = ['can_manage_users']; // can_manage_users is global. Others are race-contextual if selected.
     const isGlobalAdmin = userPermissions.permissions && userPermissions.permissions.is_admin;
@@ -1603,13 +1671,13 @@ function renderTable() {
                 <td data-label="Aktionen">
                     <div class="edit-row-actions">
                         <button class="btn-icon" onclick="event.stopPropagation(); downloadSignedPdf(${globalIndex})" title="PDF herunterladen">
-                            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M12,9A3,3 0 0,0 9,12A3,3 0 0,0 12,15A3,3 0 0,0 15,12A3,3 0 0,0 12,9M12,17A5,5 0 0,1 7,12A5,5 0 0,1 12,7A5,5 0 0,1 17,12A5,5 0 0,1 12,17M12,4.5C7,4.5 2.73,7.61 1,12C2.73,16.39 7,19.5 12,19.5C17,19.5 21.27,16.39 23,12C21.27,7.61 17,4.5 12,4.5Z" /></svg>
+                            <iconify-icon icon="mdi:file-eye-outline" aria-hidden="true"></iconify-icon>
                         </button>
                         <button class="btn-icon" onclick="event.stopPropagation(); openEditModal(${globalIndex})" title="Bearbeiten">
-                            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z" /></svg>
+                            <iconify-icon icon="mdi:pencil-outline" aria-hidden="true"></iconify-icon>
                         </button>
                         <button class="btn-icon danger-icon" onclick="event.stopPropagation(); deleteParticipant(${globalIndex})" title="Löschen">
-                            <svg viewBox="0 0 24 24"><path fill="currentColor" d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" /></svg>
+                            <iconify-icon icon="mdi:trash-can-outline" aria-hidden="true"></iconify-icon>
                         </button>
                     </div>
                 </td>

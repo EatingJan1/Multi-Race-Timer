@@ -516,6 +516,20 @@ h1 {
     display: block;
 }
 
+iconify-icon {
+    color: currentColor;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.btn-icon iconify-icon,
+.import-btn iconify-icon,
+.edit-row-actions .btn-icon iconify-icon {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
 .edit-row-actions {
     display: flex;
     gap: 4px;
@@ -1565,6 +1579,11 @@ input:checked+.switch-slider:before {
 
 .tool-btn svg {
     stroke-width: 2px;
+}
+
+.tool-btn iconify-icon {
+    width: 18px;
+    height: 18px;
 }
 
 .toolbar-select {
@@ -2747,6 +2766,11 @@ input:checked+.switch-slider:before {
     height: 100%;
     fill: currentColor;
     display: block;
+}
+
+.tab-btn .tab-icon iconify-icon {
+    width: 100%;
+    height: 100%;
 }
 
 .tab-btn:hover {
