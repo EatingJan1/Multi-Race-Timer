@@ -8,8 +8,14 @@ services:
       - "5002:5002"
     volumes:
       - ./data:/app/data
+      - ./var:/app/var
     environment:
       - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY:-change-me-before-production}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASS=${ADMIN_PASS:-}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1,http://localhost:80,http://127.0.0.1:80}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
     restart: unless-stopped
     networks:
       - zeit-network
@@ -33,3 +39,4 @@ networks:
 
 volumes:
   data:
+  var:

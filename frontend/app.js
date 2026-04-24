@@ -1,6 +1,7 @@
-const API_BASE = `http://${window.location.hostname}:5002/race`;
-const AUTH_BASE = `http://${window.location.hostname}:5002/auth`;
-const PUBLIC_BASE = `http://${window.location.hostname}:5002/public`;
+const API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:5002`;
+const API_BASE = `${API_ORIGIN}/race`;
+const AUTH_BASE = `${API_ORIGIN}/auth`;
+const PUBLIC_BASE = `${API_ORIGIN}/public`;
 
 // Set PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -26,6 +27,21 @@ let isAppendMode = false; // Flag for import mode
 let pendingAppend = []; // Temporary storage for append preview
 
 let userPermissions = {};
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function renderTagBadges(tags, extraClasses = '') {
+    if (!Array.isArray(tags) || tags.length === 0) return '';
+    const classes = ['tag-badges', extraClasses].filter(Boolean).join(' ');
+    return `<div class="${classes}">${tags.map(tag => `<span class="tag-badge">${escapeHtml(tag)}</span>`).join('')}</div>`;
+}
 
 function hasPermission(perm) {
     const globalOnly = ['can_manage_users']; // can_manage_users is global. Others are race-contextual if selected.
@@ -748,7 +764,7 @@ function createRaceCard(race) {
 
     card.innerHTML = `
         <div>
-            <h3 class="race-card-title">${race.name.replace(/_/g, ' ')}</h3>
+            <h3 class="race-card-title">${escapeHtml(race.name.replace(/_/g, ' '))}</h3>
             <div class="race-card-info">
                 ${statusBadge}
             </div>
@@ -918,7 +934,7 @@ function renderPublicResults() {
         else if (p.start_time) statusStr = '<span class="status-badge status-running">Unterwegs</span>';
         else statusStr = '<span class="status-badge status-ready">Bereit</span>';
 
-        let html = `<td data-label="Startnr.">${p.start_number}</td><td data-label="Name">${p.name}</td><td data-label="Kategorie">${p.tags.join(', ')}</td>`;
+        let html = `<td data-label="Startnr.">${p.start_number}</td><td data-label="Name">${escapeHtml(p.name)}</td><td data-label="Kategorie">${escapeHtml((p.tags || []).join(', '))}</td>`;
         if (race.settings.displaytype === 'finished') {
             html += `<td data-label="Dauer">${timeStr}</td>`;
             if (rankingMethod === 'average') {
@@ -1172,7 +1188,11 @@ if (loginForm) {
             });
             if (res.ok) {
                 const data = await res.json();
-                userPermissions = data.permissions || {};
+                userPermissions = {
+                    user: data.user,
+                    permissions: data.permissions || {},
+                    race_access: data.race_access || {}
+                };
                 loginModal.style.display = 'none';
                 loginError.style.display = 'none';
                 loginPass.value = '';
@@ -1558,9 +1578,7 @@ function renderTable() {
             row.onclick = () => selectParticipant(globalIndex);
         }
 
-        const tagsHtml = p.tags && p.tags.length > 0
-            ? `<div class="tag-badges mobile-hideable-tags">${p.tags.map(t => `<span class="tag-badge">${t}</span>`).join('')}</div>`
-            : '';
+        const tagsHtml = renderTagBadges(p.tags, 'mobile-hideable-tags');
 
         let rowHtml = '';
 
@@ -1571,7 +1589,7 @@ function renderTable() {
 
         visibleCols.forEach(col => {
             if (col.id === 'number') rowHtml += `<td data-label="Startnr.">#${p.start_number}</td>`;
-            else if (col.id === 'name') rowHtml += `<td data-label="Name">${p.name}${tagsHtml}</td>`;
+            else if (col.id === 'name') rowHtml += `<td data-label="Name">${escapeHtml(p.name)}${tagsHtml}</td>`;
             else if (col.id === 'status') rowHtml += `<td class="desktop-only"><span class="status-badge ${badgeClass}">${status}</span></td>`;
             else if (col.id === 'start') rowHtml += `<td data-label="Startzeit" class="desktop-only">${p.start_time ? formatTime(p.start_time) : '-'}</td>`;
             else if (col.id === 'duration') rowHtml += `<td data-label="Dauer">${durationDisplay}</td>`;
@@ -1703,10 +1721,8 @@ function updateActiveDisplay() {
     }
     const p = participants[activeIndex];
     activeSection.style.display = 'block';
-    const tagsHtml = p.tags && p.tags.length > 0
-        ? `<div class="tag-badges center-tags mobile-hideable-tags">${p.tags.map(t => `<span class="tag-badge">${t}</span>`).join('')}</div>`
-        : '';
-    activeName.innerHTML = `${p.name}${tagsHtml}`;
+    const tagsHtml = renderTagBadges(p.tags, 'center-tags mobile-hideable-tags');
+    activeName.innerHTML = `${escapeHtml(p.name)}${tagsHtml}`;
     activeStartNumber.textContent = `#${p.start_number}`;
 
     activeStartNumber.textContent = `#${p.start_number}`;
@@ -2755,7 +2771,7 @@ function renderUserList(users) {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td><strong>${username}${isTargetAdmin ? ' <span style="font-size:0.7rem; color:var(--accent-orange);">[ADMIN]</span>' : ''}</strong></td>
+            <td><strong>${escapeHtml(username)}${isTargetAdmin ? ' <span style="font-size:0.7rem; color:var(--accent-orange);">[ADMIN]</span>' : ''}</strong></td>
             <td style="text-align:right">
                 <button class="btn btn-outline tiny edit-user">Bearbeiten</button>
                 <button class="btn btn-outline danger-text tiny delete-user">Löschen</button>
@@ -2842,7 +2858,7 @@ function renderUserRaceList() {
     races.forEach(raceName => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td>${raceName.replace(/_/g, ' ')}</td>
+            <td>${escapeHtml(raceName.replace(/_/g, ' '))}</td>
             <td style="text-align:right">
                 <button class="btn btn-outline tiny edit-race-perms">Rechte...</button>
                 <button class="btn btn-outline danger-text tiny remove-race-access">Entfernen</button>

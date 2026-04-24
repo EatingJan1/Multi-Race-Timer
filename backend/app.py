@@ -2,32 +2,84 @@ import datetime
 import json
 import os
 from functools import wraps
-from flask import Flask, request, jsonify, send_file, session, abort, make_response, send_from_directory
+from flask import Flask, request, send_file, session, abort
 from flask_restx import Resource, Api, Namespace, fields
-from flask_cors import CORS
 import io
 import csv
 import subprocess
 import secrets
+import sqlite3
+from werkzeug.exceptions import HTTPException
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-# IMPORTANT: Set a secret key for session management!
-# In production, use os.environ.get('SECRET_KEY')
-app.secret_key = os.environ.get('SECRET_KEY', 'super-secret-key-change-me')
+
+DEFAULT_ALLOWED_ORIGINS = {
+    'http://localhost',
+    'http://127.0.0.1',
+    'http://localhost:80',
+    'http://127.0.0.1:80',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+}
+
+
+def env_flag(name, default=False):
+    return os.environ.get(name, str(default)).strip().lower() in {'1', 'true', 'yes', 'on'}
+
+
+def load_allowed_origins():
+    raw = os.environ.get('CORS_ALLOWED_ORIGINS', '')
+    if not raw.strip():
+        return DEFAULT_ALLOWED_ORIGINS
+    return {origin.strip() for origin in raw.split(',') if origin.strip()}
+
+
+def get_secret_key():
+    configured = os.environ.get('SECRET_KEY')
+    if configured:
+        return configured
+
+    generated = secrets.token_hex(32)
+    print('WARNING: SECRET_KEY is not set. Using an ephemeral key for this process.')
+    return generated
+
+
+ALLOWED_ORIGINS = load_allowed_origins()
+app.secret_key = get_secret_key()
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 12 * 1024 * 1024))
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
+app.config['SESSION_COOKIE_SECURE'] = env_flag('SESSION_COOKIE_SECURE', False)
+app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(hours=int(os.environ.get('SESSION_TTL_HOURS', '12')))
+
+
+def is_allowed_origin(origin):
+    if not origin:
+        return False
+    return origin in ALLOWED_ORIGINS
 
 # Global CORS handling for all responses including errors
 @app.after_request
 def add_cors_headers(response):
-    response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
-    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    origin = request.headers.get('Origin')
+    if is_allowed_origin(origin):
+        response.headers['Access-Control-Allow-Origin'] = origin
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers['Vary'] = 'Origin'
+
     response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
     response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     return response
 
-# Allow CORS with credentials (cookies)
-CORS(app, supports_credentials=True)
-
-version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
+try:
+    version = subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
+except Exception:
+    version = 'v1.0.0'
 api = Api(app, version=version, title='Multi-Race Timer API', description='API for tracking multiple race sessions')
 
 ns = api.namespace('race', description='Race operations')
@@ -37,82 +89,319 @@ auth_ns = api.namespace('auth', description='Authentication')
 
 DATA_DIR = 'data'
 SIGNED_DIR = os.path.join(DATA_DIR, 'signed')
+USERS_DB = 'var/users.db'
+LEGACY_USERS_FILE = 'var/users.json'
+MIN_PASSWORD_LENGTH = 8
+MAX_JSON_NAME_LENGTH = 120
+MAX_TAGS_PER_PERSON = 20
+MAX_TAG_LENGTH = 40
+MAX_PDF_SIZE_BYTES = int(os.environ.get('MAX_PDF_SIZE_BYTES', 5 * 1024 * 1024))
 
-for d in [DATA_DIR, SIGNED_DIR]:
+for d in [DATA_DIR, SIGNED_DIR, os.path.dirname(USERS_DB)]:
     if not os.path.exists(d):
         os.makedirs(d)
 
-#USERS_FILE = os.path.join(DATA_DIR, 'users.json')
-USERS_FILE = 'var/users.json'
 
-def load_users():
-    if not os.path.exists(USERS_FILE):
-        # Create default admin user if file doesn't exist
-        default_users = {
-            os.environ.get('ADMIN_USER', 'admin'): {
-                "password": os.environ.get('ADMIN_PASS', 'password'),
-                "permissions": {
-                    "is_admin": True,
-                    "can_start": True,
-                    "can_stop": True,
-                    "can_edit_form": True,
-                    "can_edit_stats": True,
-                    "can_edit_participants": True,
-                    "can_add_participants": True,
-                    "can_edit_settings": True,
-                    "can_manage_users": True
-                }
+def normalize_username(username):
+    if not isinstance(username, str):
+        abort(400, 'Username required')
+    username = username.strip()
+    if not username or len(username) > 64:
+        abort(400, 'Username must be between 1 and 64 characters')
+    if any(char.isspace() for char in username):
+        abort(400, 'Username must not contain spaces')
+    return username
+
+
+def validate_password(password):
+    if not isinstance(password, str) or len(password) < MIN_PASSWORD_LENGTH:
+        abort(400, f'Password must be at least {MIN_PASSWORD_LENGTH} characters long')
+    return password
+
+
+def hash_password(password):
+    return generate_password_hash(password)
+
+
+def verify_password(stored_password, provided_password):
+    if not stored_password or not isinstance(provided_password, str):
+        return False
+    if stored_password.startswith('pbkdf2:') or stored_password.startswith('scrypt:'):
+        return check_password_hash(stored_password, provided_password)
+    return secrets.compare_digest(stored_password, provided_password)
+
+
+def ensure_password_hashed(user_record):
+    password = user_record.get('password', '')
+    if password.startswith('pbkdf2:') or password.startswith('scrypt:'):
+        return False
+    user_record['password'] = hash_password(password)
+    return True
+
+
+def get_json_body():
+    data = request.get_json(silent=True)
+    if data is None:
+        abort(400, 'Expected JSON body')
+    if not isinstance(data, dict):
+        abort(400, 'JSON body must be an object')
+    return data
+
+
+def sanitize_race_name(race_name):
+    if not isinstance(race_name, str):
+        abort(400, 'Invalid race name')
+    safe_name = ''.join(c for c in race_name.strip() if c.isalnum() or c in ('_', '-', '.')).rstrip('.')
+    if not safe_name:
+        abort(400, 'Invalid race name')
+    if len(safe_name) > MAX_JSON_NAME_LENGTH:
+        abort(400, 'Race name too long')
+    return safe_name
+
+
+def sanitize_tags(tags):
+    if tags is None:
+        return []
+    if not isinstance(tags, list):
+        abort(400, 'Tags must be a list')
+    sanitized = []
+    for tag in tags[:MAX_TAGS_PER_PERSON]:
+        if not isinstance(tag, str):
+            continue
+        clean_tag = tag.strip()[:MAX_TAG_LENGTH]
+        if clean_tag:
+            sanitized.append(clean_tag)
+    return sanitized
+
+
+def sanitize_person(person):
+    if not isinstance(person, dict):
+        abort(400, 'Participant payload must contain objects')
+
+    name = str(person.get('name', '')).strip()
+    if not name:
+        abort(400, 'Participant name is required')
+    if len(name) > MAX_JSON_NAME_LENGTH:
+        abort(400, 'Participant name too long')
+
+    try:
+        start_number = int(person.get('start_number'))
+    except (TypeError, ValueError):
+        abort(400, 'Invalid start number')
+
+    clean_person = {
+        'id': str(person.get('id', start_number))[:64],
+        'name': name,
+        'start_number': start_number,
+        'tags': sanitize_tags(person.get('tags', [])),
+        'start_time': person.get('start_time'),
+        'end_time': person.get('end_time'),
+    }
+
+    duration = person.get('duration')
+    if duration not in (None, ''):
+        try:
+            clean_person['duration'] = float(duration)
+        except (TypeError, ValueError):
+            abort(400, 'Invalid duration')
+    else:
+        clean_person['duration'] = None
+
+    return clean_person
+
+
+def sanitize_people(people):
+    if not isinstance(people, list):
+        abort(400, 'Expected a list of participants')
+    return [sanitize_person(person) for person in people]
+
+
+def sanitize_settings(settings):
+    if not isinstance(settings, dict):
+        abort(400, 'Settings payload must be an object')
+    return settings
+
+
+def safe_join_under(base_dir, *parts):
+    base_dir = os.path.abspath(base_dir)
+    candidate = os.path.abspath(os.path.join(base_dir, *parts))
+    if os.path.commonpath([base_dir, candidate]) != base_dir:
+        abort(400, 'Invalid path')
+    return candidate
+
+
+def default_permissions_for(username):
+    admin_user = os.environ.get('ADMIN_USER', 'admin')
+    if username == admin_user:
+        return {
+            "is_admin": True,
+            "can_start": True,
+            "can_stop": True,
+            "can_edit_form": True,
+            "can_edit_stats": True,
+            "can_edit_participants": True,
+            "can_add_participants": True,
+            "can_edit_settings": True,
+            "can_manage_users": True,
+            "can_see_all": True,
+            "hide_ranking": False,
+            "hide_duration": False,
+        }
+    return {
+        "can_see_all": True,
+        "hide_ranking": False,
+        "hide_duration": False,
+    }
+
+
+def get_db_connection():
+    conn = sqlite3.connect(USERS_DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _serialize_user_record(username, data):
+    permissions = data.get('permissions', default_permissions_for(username))
+    race_access = data.get('race_access', {})
+    password = data.get('password', '')
+    return (
+        username,
+        password,
+        json.dumps(permissions, separators=(',', ':')),
+        json.dumps(race_access, separators=(',', ':')),
+    )
+
+
+def _write_users_to_db(users):
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute("DELETE FROM users")
+            for username, data in users.items():
+                conn.execute(
+                    "INSERT INTO users (username, password, permissions, race_access) VALUES (?, ?, ?, ?)",
+                    _serialize_user_record(username, data),
+                )
+    finally:
+        conn.close()
+
+
+def init_user_store():
+    conn = get_db_connection()
+    try:
+        with conn:
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS users (
+                    username TEXT PRIMARY KEY,
+                    password TEXT NOT NULL,
+                    permissions TEXT NOT NULL,
+                    race_access TEXT NOT NULL
+                )
+                """
+            )
+            row = conn.execute("SELECT COUNT(*) AS cnt FROM users").fetchone()
+            if row and row["cnt"] > 0:
+                return
+    finally:
+        conn.close()
+
+    users_to_seed = {}
+
+    if os.path.exists(LEGACY_USERS_FILE):
+        try:
+            with open(LEGACY_USERS_FILE, 'r') as f:
+                legacy_users = json.load(f)
+            if isinstance(legacy_users, dict):
+                for username, data in legacy_users.items():
+                    if isinstance(username, str) and isinstance(data, dict):
+                        users_to_seed[username] = data
+            if users_to_seed:
+                print(f"Migrating users from {LEGACY_USERS_FILE} to SQLite.")
+        except Exception as exc:
+            print(f"Could not migrate legacy users file: {exc}")
+
+    if not users_to_seed:
+        admin_user = os.environ.get('ADMIN_USER', 'admin')
+        admin_password = os.environ.get('ADMIN_PASS')
+        if not admin_password:
+            admin_password = secrets.token_urlsafe(16)
+            print('Generated initial admin password because ADMIN_PASS was not set.')
+            print(f'Initial admin password: {admin_password}')
+
+        users_to_seed = {
+            admin_user: {
+                "password": hash_password(admin_password),
+                "permissions": default_permissions_for(admin_user),
+                "race_access": {},
             }
         }
-        print("Creating default admin user: " + os.environ.get('ADMIN_USER', 'admin'))
-        with open(USERS_FILE, 'w') as f:
-            json.dump(default_users, f, indent=4)
-        return default_users
-    
+        print("Creating default admin user: " + admin_user)
+
+    users_normalized = {}
+    for username, data in users_to_seed.items():
+        user_data = dict(data)
+        if "permissions" not in user_data or not isinstance(user_data.get("permissions"), dict):
+            user_data["permissions"] = default_permissions_for(username)
+        if "race_access" not in user_data or not isinstance(user_data.get("race_access"), dict):
+            user_data["race_access"] = {}
+        if ensure_password_hashed(user_data):
+            pass
+        users_normalized[username] = user_data
+
+    _write_users_to_db(users_normalized)
+
+
+def load_users():
+    init_user_store()
     try:
-        with open(USERS_FILE, 'r') as f:
-            users = json.load(f)
-            # Ensure all users have permissions key
-            modified = False
-            for user, data in users.items():
-                if "permissions" not in data:
-                    # Grant admin ALL permissions, others NONE by default
-                    # Grant admin ALL permissions, others basic view by default
-                    if user == os.environ.get('ADMIN_USER', 'admin'):
-                        data["permissions"] = {
-                            "is_admin": True,
-                            "can_start": True,
-                            "can_stop": True,
-                            "can_edit_form": True,
-                            "can_edit_stats": True,
-                            "can_edit_participants": True,
-                            "can_add_participants": True,
-                            "can_edit_settings": True,
-                            "can_manage_users": True,
-                            "can_see_all": True,
-                            "hide_ranking": False,
-                            "hide_duration": False
-                        }
-                    else:
-                        data["permissions"] = {
-                            "can_see_all": True,
-                            "hide_ranking": False,
-                            "hide_duration": False
-                        }
-                    modified = True
-                
-                if "race_access" not in data:
-                    data["race_access"] = {}
-                    modified = True
-            if modified:
-                save_users(users)
-            return users
+        conn = get_db_connection()
+        rows = conn.execute("SELECT username, password, permissions, race_access FROM users").fetchall()
+        users = {}
+        modified = False
+
+        for row in rows:
+            username = row["username"]
+            user_data = {"password": row["password"]}
+
+            try:
+                permissions = json.loads(row["permissions"])
+                if not isinstance(permissions, dict):
+                    raise ValueError("permissions must be object")
+            except Exception:
+                permissions = default_permissions_for(username)
+                modified = True
+            user_data["permissions"] = permissions
+
+            try:
+                race_access = json.loads(row["race_access"])
+                if not isinstance(race_access, dict):
+                    raise ValueError("race_access must be object")
+            except Exception:
+                race_access = {}
+                modified = True
+            user_data["race_access"] = race_access
+
+            if ensure_password_hashed(user_data):
+                modified = True
+
+            users[username] = user_data
+
+        if modified:
+            _write_users_to_db(users)
+
+        return users
     except Exception:
         return {}
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 def save_users(users):
-    with open(USERS_FILE, 'w') as f:
-        json.dump(users, f, indent=4)
+    init_user_store()
+    _write_users_to_db(users)
 
 def get_app_version():
     try:
@@ -189,13 +478,13 @@ def permission_required(perm):
 class Login(Resource):
     def post(self):
         """Login to the application"""
-        data = request.json
-        username = data.get('username')
+        data = get_json_body()
+        username = normalize_username(data.get('username'))
         password = data.get('password')
         
         users = load_users()
         
-        if username in users and users[username]["password"] == password:
+        if username in users and verify_password(users[username].get("password"), password):
             session['logged_in'] = True
             session['user'] = username
             session['permissions'] = users[username].get("permissions", {})
@@ -231,11 +520,10 @@ class UserList(Resource):
     @permission_required('can_manage_users')
     def post(self):
         """Create or update a user"""
-        data = request.json
-        username = data.get('username')
+        data = get_json_body()
+        username = normalize_username(data.get('username'))
         password = data.get('password')
         permissions = data.get('permissions', {})
-        
         race_access = data.get('race_access', {})
         
         if not username:
@@ -263,8 +551,12 @@ class UserList(Resource):
         if username in users:
             if not password:
                 password = users[username]["password"]
+            else:
+                password = hash_password(validate_password(password))
         elif not password:
              abort(400, "Password required for new user")
+        else:
+            password = hash_password(validate_password(password))
 
         users[username] = {
             "password": password,
@@ -315,15 +607,15 @@ class UserProfile(Resource):
              return {'message': 'Authentication required'}, 401
         
         username = session.get('user')
-        data = request.json
-        new_password = data.get('password')
+        data = get_json_body()
+        new_password = validate_password(data.get('password'))
         
         if not new_password:
              abort(400, "New password required")
              
         users = load_users()
         if username in users:
-            users[username]["password"] = new_password
+            users[username]["password"] = hash_password(new_password)
             save_users(users)
             return {'status': 'success'}, 200
         
@@ -354,7 +646,7 @@ class AuthStatus(Resource):
 
 def get_race_path(race_name):
     # Ensure safe filename
-    safe_name = "".join([c for c in race_name if c.isalnum() or c in ('.', '_', '-')]).rstrip()
+    safe_name = sanitize_race_name(race_name)
     if not safe_name.endswith('.json'):
         safe_name += '.json'
     return os.path.join(DATA_DIR, safe_name)
@@ -437,7 +729,7 @@ class PersonList(Resource):
     @permission_required('can_edit_participants')
     def put(self, race_name):
         """Import or update people in a specific race"""
-        people = request.json
+        people = sanitize_people(request.get_json(silent=True))
         data = load_data(race_name)
         data['people'] = people
         save_data(race_name, data)
@@ -449,7 +741,7 @@ class PersonAppend(Resource):
     @permission_required('can_add_participants')
     def post(self, race_name):
         """Append People to a specific race"""
-        people = request.json
+        people = sanitize_people(request.get_json(silent=True))
         data = load_data(race_name)
         data['people'] += people
         save_data(race_name, data)
@@ -466,7 +758,7 @@ class RaceSettings(Resource):
     @permission_required('can_edit_settings')
     def post(self, race_name):
         """Update race settings"""
-        settings = request.json
+        settings = sanitize_settings(request.get_json(silent=True))
         data = load_data(race_name)
         data['settings'] = settings
         save_data(race_name, data)
@@ -536,8 +828,7 @@ class PublicRegister(Resource):
         """Register for a race"""
         data = load_data(race_name)
         settings = data.get('settings', {})
-        registration_data = request.json # Contains participant info
-        print(settings.get('displaytype', 'hidden'))
+        registration_data = get_json_body()
         
         if settings.get('displaytype', 'hidden') == 'registration_stop' or settings.get('displaytype', 'hidden') == 'finished':
             abort(403, "Registration is closed or not allowed")
@@ -549,9 +840,7 @@ class PublicRegister(Resource):
         
         # Add person to race
         min_num = settings.get('start_num_min', 100)
-        print(min_num)
         max_num = settings.get('start_num_max', 9999)
-        print(max_num)
         
         used_numbers = [p['start_number'] for p in data['people']]
         
@@ -560,16 +849,23 @@ class PublicRegister(Resource):
         while start_num in used_numbers and start_num <= max_num:
             start_num += 1
             
-        if start_num >= max_num:
+        if start_num > max_num:
             abort(400, "Keine freien Startnummern mehr in diesem Bereich!")
+
+        name = str(registration_data.get('name', '')).strip()
+        if not name:
+            abort(400, 'Name is required')
+        if len(name) > MAX_JSON_NAME_LENGTH:
+            abort(400, 'Name too long')
 
         new_person = {
             'id': str(start_num),
-            'name': registration_data.get('name'),
+            'name': name,
             'start_number': start_num,
-            'tags': registration_data.get('tags', []),
+            'tags': sanitize_tags(registration_data.get('tags', [])),
             'start_time': None,
             'end_time': None,
+            'duration': None,
         }
 
         data['people'].append(new_person)
@@ -584,9 +880,11 @@ class PublicRegister(Resource):
                     signed_pdf_base64 = signed_pdf_base64.split(',')[1]
                 
                 pdf_data = base64.b64decode(signed_pdf_base64)
+                if len(pdf_data) > MAX_PDF_SIZE_BYTES:
+                    abort(400, 'Signed PDF is too large')
                 
                 # Race-specific subdirectory
-                race_signed_dir = os.path.join(SIGNED_DIR, race_name)
+                race_signed_dir = safe_join_under(SIGNED_DIR, sanitize_race_name(race_name))
                 if not os.path.exists(race_signed_dir):
                     os.makedirs(race_signed_dir)
                     
@@ -594,6 +892,8 @@ class PublicRegister(Resource):
                 save_path = os.path.join(race_signed_dir, filename)
                 with open(save_path, 'wb') as f:
                     f.write(pdf_data)
+            except HTTPException:
+                raise
             except Exception as e:
                 print(f"Error saving signed PDF: {e}")
                 
@@ -603,8 +903,8 @@ class PublicRegister(Resource):
 class PublicParticipants(Resource):
     def post(self, race_name):
         """Use Key acsses Kiosk Mode"""
-        json = request.json
-        SECKEY = json.get("SECKEY", "")
+        data = get_json_body()
+        SECKEY = data.get("SECKEY", "")
         data = load_data(race_name)
         settings = data.get('settings', {})
         key = settings.get('key', "") 
@@ -633,12 +933,15 @@ class FullData(Resource):
         """Get full race data as JSON"""
         return load_data(race_name)
 
-    @login_required
+    @permission_required('can_edit_settings')
     def put(self, race_name):
         """Upload full race data as JSON"""
-        data = request.json
-        save_data(race_name, data)
-        return data, 201
+        data = get_json_body()
+        people = sanitize_people(data.get('people', []))
+        settings = sanitize_settings(data.get('settings', {}))
+        payload = {'people': people, 'settings': settings}
+        save_data(race_name, payload)
+        return payload, 201
 
 
 @ns.route('/<string:race_name>/start/<int:start_number>')
@@ -737,9 +1040,11 @@ class DownloadSignedPdf(Resource):
     def get(self, race_name, filename):
         """Download a specific signed PDF"""
         try:
-            abs_signed_dir = os.path.abspath(SIGNED_DIR)
-            race_signed_dir = os.path.join(abs_signed_dir, race_name)
-            file_path = os.path.join(race_signed_dir, filename)
+            race_signed_dir = safe_join_under(SIGNED_DIR, sanitize_race_name(race_name))
+            safe_filename = os.path.basename(filename)
+            if safe_filename != filename or not safe_filename.lower().endswith('.pdf'):
+                abort(400, 'Invalid PDF filename')
+            file_path = safe_join_under(race_signed_dir, safe_filename)
             
             if not os.path.exists(file_path):
                 print(f"PDF not found: {file_path}")
@@ -755,7 +1060,7 @@ class DownloadSignedPdf(Resource):
 @ns.route('/<string:race_name>/genkey')
 class FullData(Resource):
 
-    @login_required
+    @permission_required('can_edit_settings')
     def get(self, race_name):
         """Upload full race data as JSON"""
         
@@ -773,4 +1078,4 @@ class FullData(Resource):
     
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5002)
+    app.run(debug=env_flag('FLASK_DEBUG', False), host='0.0.0.0', port=int(os.environ.get('PORT', '5002')))

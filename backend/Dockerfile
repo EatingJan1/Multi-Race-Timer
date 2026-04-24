@@ -1,4 +1,5 @@
-FROM python:3.11-slim
+FROM python:3.14-slim
+#Ich habe 3.11 genutzt
 
 WORKDIR /app
 
@@ -9,8 +10,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY app.py .
 
-# Create data directory for persistent storage
-RUN mkdir -p /app/data
+# Create data directories for persistent storage
+RUN mkdir -p /app/data /app/var
 
 # Expose port
 EXPOSE 5002
