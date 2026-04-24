@@ -42,10 +42,10 @@ Die App ist dann erreichbar unter:
 - **Backend API:** http://localhost:5002
 
 ### Standard-Login
-- **Benutzer:** `admin`
-- **Passwort:** `password`
+- **Benutzer:** `admin` oder Wert aus `ADMIN_USER`
+- **Passwort:** Wert aus `ADMIN_PASS`
 
-> ⚠️ Das Passwort sollte vor dem produktiven Einsatz geändert werden (siehe [Wiki: Sicherheit](../../wiki/Sicherheit)).
+> Wenn `ADMIN_PASS` nicht gesetzt ist, erzeugt das Backend beim ersten Start ein zufälliges Initialpasswort und schreibt es ins Log.
 
 ---
 
@@ -56,6 +56,24 @@ docker-compose up -d
 ```
 
 Das Frontend ist dann auf Port `80`, das Backend auf Port `5002` erreichbar.
+
+### Wichtige Produktions-Variablen
+
+Vor dem produktiven Einsatz sollten mindestens diese Werte gesetzt werden:
+
+```bash
+export SECRET_KEY='bitte-einen-langen-zufallswert-setzen'
+export ADMIN_USER='admin'
+export ADMIN_PASS='bitte-ein-starkes-passwort-setzen'
+export CORS_ALLOWED_ORIGINS='https://deine-domain.example'
+export SESSION_COOKIE_SECURE='true'
+docker-compose up -d
+```
+
+Sicherheitsrelevante Hinweise:
+- Passwörter werden ab V1.0 gehasht gespeichert; alte Klartext-Passwörter werden beim Laden automatisch migriert.
+- Benutzerdaten liegen in `./var/users.db` (SQLite) und werden per Docker-Volume persistent gehalten.
+- Offene CORS-Freigaben wurden entfernt. Bei zusätzlicher Domain oder LAN-Nutzung `CORS_ALLOWED_ORIGINS` explizit ergänzen.
 
 ---
 
@@ -79,7 +97,7 @@ Multi-Race-Timer/
 ├── data/                   # Renndaten (JSON) & Signaturen (PDF)
 ├── docker-compose.yml
 ├── start.sh                # Lokaler Startskript
-├── users.json              # Admin-Zugangsdaten
+├── var/users.db            # Benutzer & Berechtigungen (SQLite)
 └── LICENSE                 # MIT License
 ```
 
