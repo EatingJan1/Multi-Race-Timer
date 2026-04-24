@@ -1929,6 +1929,50 @@ input:checked+.switch-slider:before {
     border: 1px solid var(--glass-border);
 }
 
+.admin-release-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: #c7d2fe;
+    font-weight: 500;
+}
+
+.admin-release-note a {
+    color: #e0e7ff;
+    text-decoration: underline;
+    opacity: 0.95;
+}
+
+.admin-release-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.admin-release-update-btn {
+    border: 1px solid rgba(224, 231, 255, 0.6);
+    background: rgba(224, 231, 255, 0.12);
+    color: #e0e7ff;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.admin-release-update-btn:hover {
+    background: rgba(224, 231, 255, 0.2);
+}
+
+.admin-release-update-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
 /* Container */
 .dropdown {
     position: relative;

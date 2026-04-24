@@ -9,6 +9,9 @@ import csv
 import subprocess
 import secrets
 import sqlite3
+import sys
+import urllib.request
+import urllib.error
 from werkzeug.exceptions import HTTPException
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -96,6 +99,9 @@ MAX_JSON_NAME_LENGTH = 120
 MAX_TAGS_PER_PERSON = 20
 MAX_TAG_LENGTH = 40
 MAX_PDF_SIZE_BYTES = int(os.environ.get('MAX_PDF_SIZE_BYTES', 5 * 1024 * 1024))
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+BACKEND_REQUIREMENTS_PATH = os.path.join(REPO_ROOT, 'backend', 'requirements.txt')
+FRONTEND_PRECHECK_SCRIPT = os.path.join(REPO_ROOT, 'backend', 'update_frontend_check.py')
 
 for d in [DATA_DIR, SIGNED_DIR, os.path.dirname(USERS_DB)]:
     if not os.path.exists(d):
@@ -228,6 +234,125 @@ def safe_join_under(base_dir, *parts):
     if os.path.commonpath([base_dir, candidate]) != base_dir:
         abort(400, 'Invalid path')
     return candidate
+
+
+def is_docker_runtime():
+    if env_flag('DISABLE_SELF_UPDATE', False):
+        return True
+    if os.path.exists('/.dockerenv'):
+        return True
+    return env_flag('RUNNING_IN_DOCKER', False)
+
+
+def can_self_update():
+    return not is_docker_runtime()
+
+
+def run_repo_cmd(args):
+    return subprocess.run(
+        args,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+
+def run_frontend_precheck(frontend_path=None):
+    if not os.path.exists(FRONTEND_PRECHECK_SCRIPT):
+        abort(500, 'Frontend precheck script is missing.')
+
+    cmd = [
+        sys.executable,
+        FRONTEND_PRECHECK_SCRIPT,
+        '--repo-root',
+        REPO_ROOT,
+        '--frontend-path',
+        frontend_path or '',
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    payload = json.loads(proc.stdout.strip() or '{}')
+    if not isinstance(payload, dict):
+        abort(500, 'Invalid frontend precheck response.')
+    return payload
+
+
+def get_latest_release_tag():
+    url = 'https://api.github.com/repos/EatingJan1/Multi-Race-Timer/releases/latest'
+    req = urllib.request.Request(url, headers={'Accept': 'application/vnd.github+json'})
+    with urllib.request.urlopen(req, timeout=8) as response:
+        payload = json.loads(response.read().decode('utf-8'))
+        tag = payload.get('tag_name') or payload.get('name')
+        return str(tag).strip() if tag else None
+
+
+def get_current_git_tag():
+    try:
+        exact = run_repo_cmd(['git', 'describe', '--tags', '--exact-match'])
+        return exact.stdout.strip()
+    except Exception:
+        try:
+            nearest = run_repo_cmd(['git', 'describe', '--tags', '--abbrev=0'])
+            return nearest.stdout.strip()
+        except Exception:
+            return get_app_version()
+
+
+def ensure_clean_worktree():
+    status = run_repo_cmd(['git', 'status', '--porcelain'])
+    if status.stdout.strip():
+        abort(409, 'Working tree has uncommitted changes. Commit/stash first.')
+
+
+def perform_self_update(frontend_path=None, allow_nonstandard_manifest=False):
+    if not can_self_update():
+        abort(403, 'Self update is disabled in Docker/runtime environment.')
+
+    precheck = run_frontend_precheck(frontend_path)
+    if not precheck.get('ok'):
+        details = '; '.join(precheck.get('errors', [])) or 'Frontend precheck failed.'
+        abort(400, details)
+
+    if precheck.get('requires_confirmation') and not allow_nonstandard_manifest:
+        warn = '; '.join(precheck.get('warnings', [])) or 'Frontend manifest requires confirmation.'
+        abort(412, warn)
+
+    ensure_clean_worktree()
+
+    run_repo_cmd(['git', 'fetch', '--tags', 'origin'])
+    latest_tag = get_latest_release_tag()
+    if not latest_tag:
+        abort(502, 'Could not fetch latest release information.')
+
+    current_tag = get_current_git_tag()
+    if current_tag == latest_tag:
+        return {
+            'status': 'up_to_date',
+            'current_version': current_tag,
+            'latest_version': latest_tag,
+            'updated': False,
+        }
+
+    run_repo_cmd(['git', 'checkout', latest_tag])
+
+    if os.path.exists(BACKEND_REQUIREMENTS_PATH):
+        subprocess.run(
+            [sys.executable, '-m', 'pip', 'install', '-r', BACKEND_REQUIREMENTS_PATH],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+
+    return {
+        'status': 'updated',
+        'previous_version': current_tag,
+        'current_version': latest_tag,
+        'latest_version': latest_tag,
+        'updated': True,
+        'restart_required': True,
+        'frontend_precheck': precheck,
+    }
 
 
 def default_permissions_for(username):
@@ -472,6 +597,18 @@ def permission_required(perm):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('logged_in'):
+            return {'message': 'Authentication required'}, 401
+        permissions = session.get('permissions', {})
+        if not permissions.get('is_admin'):
+            return {'message': 'Admin permission required'}, 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 # Authentication Endpoints
 @auth_ns.route('/login')
@@ -773,8 +910,53 @@ class PublicInfo(Resource):
         """Get public application information (version, etc.)"""
         return {
             'version': get_app_version(),
-            'copyright': 'Jan Reiner'
+            'copyright': 'Jan Reiner',
+            'self_update_supported': can_self_update(),
+            'runtime': 'docker' if is_docker_runtime() else 'host',
         }
+
+
+@auth_ns.route('/update/apply')
+class ApplyUpdate(Resource):
+    @admin_required
+    def post(self):
+        """Apply latest GitHub release on non-Docker installs"""
+        try:
+            payload = request.get_json(silent=True) or {}
+            if not isinstance(payload, dict):
+                abort(400, 'Invalid request body')
+            frontend_path = payload.get('frontend_path')
+            allow_nonstandard_manifest = bool(payload.get('allow_nonstandard_manifest'))
+
+            result = perform_self_update(
+                frontend_path=frontend_path,
+                allow_nonstandard_manifest=allow_nonstandard_manifest,
+            )
+            return result, 200
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or '').strip()
+            stdout = (exc.stdout or '').strip()
+            message = stderr or stdout or str(exc)
+            return {'status': 'error', 'message': message}, 500
+
+
+@auth_ns.route('/update/precheck')
+class UpdatePrecheck(Resource):
+    @admin_required
+    def post(self):
+        """Validate frontend update location and manifest before update."""
+        try:
+            payload = request.get_json(silent=True) or {}
+            if not isinstance(payload, dict):
+                abort(400, 'Invalid request body')
+            frontend_path = payload.get('frontend_path')
+            result = run_frontend_precheck(frontend_path)
+            return result, 200
+        except subprocess.CalledProcessError as exc:
+            stderr = (exc.stderr or '').strip()
+            stdout = (exc.stdout or '').strip()
+            message = stderr or stdout or str(exc)
+            return {'status': 'error', 'message': message}, 500
 
 
 @public_ns.route('/races')

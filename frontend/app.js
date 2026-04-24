@@ -2,6 +2,7 @@ const API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:500
 const API_BASE = `${API_ORIGIN}/race`;
 const AUTH_BASE = `${API_ORIGIN}/auth`;
 const PUBLIC_BASE = `${API_ORIGIN}/public`;
+const GITHUB_LATEST_RELEASE_API = 'https://api.github.com/repos/EatingJan1/Multi-Race-Timer/releases/latest';
 
 // Set PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -27,6 +28,7 @@ let isAppendMode = false; // Flag for import mode
 let pendingAppend = []; // Temporary storage for append preview
 
 let userPermissions = {};
+let releaseInfoCache = null;
 
 function escapeHtml(value) {
     return String(value ?? '')
@@ -107,6 +109,179 @@ function applyIconifyIcons() {
         if (svg.querySelector('defs')) return;
         replaceSvgNode(svg, 'mdi:help-circle-outline');
     });
+}
+
+
+function waitAndApplyIconify(retries = 25) {
+    if (window.customElements && window.customElements.get('iconify-icon')) {
+        applyIconifyIcons();
+        return;
+    }
+    if (retries <= 0) return;
+    setTimeout(() => waitAndApplyIconify(retries - 1), 120);
+}
+
+function normalizeTagVersion(tag) {
+    if (!tag) return [];
+    const cleaned = String(tag).trim().replace(/^v/i, '').split('-')[0];
+    return cleaned.split('.').map(v => parseInt(v, 10)).filter(Number.isFinite);
+}
+
+function compareVersionTags(currentTag, latestTag) {
+    const current = normalizeTagVersion(currentTag);
+    const latest = normalizeTagVersion(latestTag);
+    const maxLen = Math.max(current.length, latest.length);
+    for (let i = 0; i < maxLen; i += 1) {
+        const a = current[i] || 0;
+        const b = latest[i] || 0;
+        if (a < b) return -1;
+        if (a > b) return 1;
+    }
+    return 0;
+}
+
+async function updateAdminReleaseNotice() {
+    const releaseEl = document.getElementById('adminReleaseNotice');
+    if (!releaseEl) return;
+
+    const isAdmin = !!(userPermissions.permissions && userPermissions.permissions.is_admin);
+    if (!isAdmin) {
+        releaseEl.style.display = 'none';
+        releaseEl.textContent = '';
+        return;
+    }
+
+    try {
+        if (!releaseInfoCache) {
+            const [infoRes, releaseRes] = await Promise.all([
+                fetch(`${PUBLIC_BASE}/info`),
+                fetch(GITHUB_LATEST_RELEASE_API, { headers: { 'Accept': 'application/vnd.github+json' } })
+            ]);
+
+            if (!infoRes.ok || !releaseRes.ok) {
+                throw new Error('Could not fetch release metadata');
+            }
+
+            const appInfo = await infoRes.json();
+            const latestRelease = await releaseRes.json();
+            const currentVersion = appInfo.version || 'v0.0.0';
+            const latestVersion = latestRelease.tag_name || latestRelease.name || 'v0.0.0';
+            const hasUpdate = compareVersionTags(currentVersion, latestVersion) < 0;
+
+            releaseInfoCache = {
+                hasUpdate,
+                currentVersion,
+                latestVersion,
+                latestUrl: latestRelease.html_url || 'https://github.com/EatingJan1/Multi-Race-Timer/releases',
+                selfUpdateSupported: !!appInfo.self_update_supported
+            };
+        }
+
+        if (!releaseInfoCache.hasUpdate) {
+            releaseEl.style.display = 'none';
+            releaseEl.textContent = '';
+            return;
+        }
+
+        releaseEl.textContent = '';
+        releaseEl.style.display = 'inline-flex';
+
+        const prefix = document.createElement('span');
+        prefix.textContent = `Neue Version verfügbar (${releaseInfoCache.currentVersion} -> ${releaseInfoCache.latestVersion}):`;
+        releaseEl.appendChild(prefix);
+
+        const actionWrap = document.createElement('span');
+        actionWrap.className = 'admin-release-actions';
+
+        const link = document.createElement('a');
+        link.href = releaseInfoCache.latestUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Release öffnen';
+        actionWrap.appendChild(link);
+
+        if (releaseInfoCache.selfUpdateSupported) {
+            const updateBtn = document.createElement('button');
+            updateBtn.type = 'button';
+            updateBtn.className = 'admin-release-update-btn';
+            updateBtn.textContent = 'Jetzt updaten';
+            updateBtn.onclick = async () => {
+                updateBtn.disabled = true;
+                updateBtn.textContent = 'Update läuft...';
+
+                try {
+                    const frontendPathInput = prompt(
+                        'Frontend-Pfad für Prüfung (leer = "frontend"):',
+                        'frontend'
+                    );
+                    if (frontendPathInput === null) {
+                        updateBtn.disabled = false;
+                        updateBtn.textContent = 'Jetzt updaten';
+                        return;
+                    }
+
+                    const normalizedPath = frontendPathInput.trim();
+                    const precheckRes = await fetch(`${AUTH_BASE}/update/precheck`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ frontend_path: normalizedPath })
+                    });
+                    const precheck = await precheckRes.json().catch(() => ({}));
+                    if (!precheckRes.ok) {
+                        throw new Error(precheck.message || 'Precheck fehlgeschlagen');
+                    }
+
+                    if (!precheck.ok) {
+                        const errors = Array.isArray(precheck.errors) ? precheck.errors.join('\n- ') : 'Unbekannter Fehler';
+                        throw new Error(`Frontend-Check fehlgeschlagen:\n- ${errors}`);
+                    }
+
+                    let allowNonstandardManifest = false;
+                    if (precheck.requires_confirmation) {
+                        const warnings = Array.isArray(precheck.warnings) ? precheck.warnings.join('\n- ') : 'Manifest-Prüfung fehlgeschlagen';
+                        const proceed = confirm(
+                            `Manifest-Warnung:\n- ${warnings}\n\nTrotzdem installieren?`
+                        );
+                        if (!proceed) {
+                            updateBtn.disabled = false;
+                            updateBtn.textContent = 'Jetzt updaten';
+                            return;
+                        }
+                        allowNonstandardManifest = true;
+                    }
+
+                    const applyRes = await fetch(`${AUTH_BASE}/update/apply`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            frontend_path: normalizedPath,
+                            allow_nonstandard_manifest: allowNonstandardManifest
+                        })
+                    });
+                    const applyPayload = await applyRes.json().catch(() => ({}));
+                    if (!applyRes.ok) {
+                        throw new Error(applyPayload.message || 'Update fehlgeschlagen');
+                    }
+
+                    updateBtn.textContent = applyPayload.updated ? 'Update installiert' : 'Schon aktuell';
+                } catch (err) {
+                    console.error(err);
+                    updateBtn.disabled = false;
+                    updateBtn.textContent = 'Update fehlgeschlagen';
+                    alert(err.message || 'Update fehlgeschlagen');
+                }
+            };
+            actionWrap.appendChild(updateBtn);
+        }
+
+        releaseEl.appendChild(actionWrap);
+    } catch (err) {
+        console.warn('Release check failed:', err);
+        releaseEl.style.display = 'none';
+        releaseEl.textContent = '';
+    }
 }
 
 
@@ -766,6 +941,8 @@ async function showAdminApp() {
         currentRace = '';
         updateSettingsUI();
     }
+
+    await updateAdminReleaseNotice();
 }
 
 async function showLandingPage() {
@@ -1281,6 +1458,7 @@ if (logoutBtn) {
         if (!confirm('Wirklich abmelden?')) return;
         try {
             await fetch(`${AUTH_BASE}/logout`, { method: 'POST', credentials: 'include' });
+            releaseInfoCache = null;
             window.location.reload();
         } catch (e) {
             console.error("Logout failed", e);
@@ -3695,4 +3873,5 @@ async function downloadSignedPdf(index) {
 
 window.downloadSignedPdf = downloadSignedPdf;
 
+waitAndApplyIconify();
 init();

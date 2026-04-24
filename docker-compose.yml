@@ -16,6 +16,7 @@ services:
       - ADMIN_PASS=${ADMIN_PASS:-}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost,http://127.0.0.1,http://localhost:80,http://127.0.0.1:80}
       - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE:-false}
+      - DISABLE_SELF_UPDATE=true
     restart: unless-stopped
     networks:
       - zeit-network

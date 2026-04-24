@@ -1,7 +1,7 @@
 // Lightweight script to load version and copyright info into the footer.
 // Used on sub-pages (impressum.html, datenschutz.html) without loading the full app.js.
 (async function () {
-    const PUBLIC_BASE = `http://${window.location.hostname}:5002/public`;
+    const PUBLIC_BASE = `${window.location.protocol}//${window.location.hostname}:5002/public`;
     try {
         const res = await fetch(`${PUBLIC_BASE}/info`);
         if (res.ok) {
