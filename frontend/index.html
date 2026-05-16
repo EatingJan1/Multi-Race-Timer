@@ -34,22 +34,13 @@
 <body>
     <div id="backendError" class="backend-error-notification" style="display: none;">
         <div class="error-content">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
-                </path>
-                <line x1="12" y1="9" x2="12" y2="13"></line>
-                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
+            <iconify-icon icon="line-md:alert-circle-loop" width="20" height="20"></iconify-icon>
             <span>Verbindung zum Backend verloren - Bitte Backend starten!</span>
         </div>
     </div>
     <div id="noPermissionOverlay" class="no-permission-overlay" style="display: none;">
         <div class="overlay-content card">
-            <svg style="width:64px;height:64px;color:var(--accent-red);margin-bottom:1.5rem;" viewBox="0 0 24 24">
-                <path fill="currentColor"
-                    d="M12,17A2,2 0 0,0 14,15C14,13.89 13.11,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z" />
-            </svg>
+            <iconify-icon icon="line-md:watch-off-loop" width="64" height="64" style="color:var(--accent-red);margin-bottom:1.5rem;"></iconify-icon>
             <h1>Keine Berechtigung</h1>
             <p class="subtitle">Sie haben keine Berechtigung, die Daten dieses Rennens einzusehen oder zu bearbeiten.
             </p>
@@ -94,10 +85,7 @@
     <div id="registrationPage" class="registration-container" style="display: none;">
         <div class="reg-header">
             <button id="backToLandingBtn" class="btn-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="19" y1="12" x2="5" y2="12"></line>
-                    <polyline points="12 19 5 12 12 5"></polyline>
-                </svg>
+                <iconify-icon icon="line-md:arrow-left" width="20" height="20"></iconify-icon>
                 Zurück
             </button>
             <h2 id="regRaceTitle">Rennanmeldung</h2>
@@ -201,12 +189,7 @@
                 </select>
                 <div class="action-buttons">
                     <button id="exportBtn" class="btn-icon" title="STRG + P">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path>
-                            <polyline points="7 10 12 15 17 10"></polyline>
-                            <line x1="12" y1="15" x2="12" y2="3"></line>
-                        </svg>
+                        <iconify-icon icon="line-md:file-export" width="20" height="20"></iconify-icon>
                         <span>Export</span>
                     </button>
 
@@ -219,30 +202,16 @@
                 <div class="import-section">
                     <div class="dropdown">
                         <button id="importCsvBtn" class="import-btn">
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                stroke-width="2">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
+                            <iconify-icon icon="line-md:plus" width="18" height="18"></iconify-icon>
                             <span>Neu</span>
                         </button>
                         <div class="dropdown-content">
                             <a href="#" id="createEmptyRaceBtn">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                                    <line x1="9" y1="21" x2="9" y2="9"></line>
-                                </svg>
+                                <iconify-icon icon="mdi:table-plus" width="16" height="16"></iconify-icon>
                                 Leere Tabelle erstellen
                             </a>
                             <a href="#" onclick="document.getElementById('csvFile').click(); return false;">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                    stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                </svg>
+                                <iconify-icon icon="line-md:upload-loop" width="16" height="16"></iconify-icon>
                                 CSV/XLSX Import
                             </a>
                         </div>
@@ -251,13 +220,7 @@
                 </div>
 
                 <button id="settingsBtn" class="btn-icon" title="Einstellungen">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="3"></circle>
-                        <path
-                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
-                        </path>
-                    </svg>
+                    <iconify-icon icon="line-md:cog-loop" width="20" height="20"></iconify-icon>
                 </button>
             </div>
         </div>
@@ -272,36 +235,25 @@
                     <nav class="settings-tabs">
                         <button id="nav-tab-race" class="tab-btn active" data-tab="tab-race">
                             <span class="tab-icon">
-                                <svg viewBox="0 0 24 24">
-                                    <path fill="currentColor" d="M14.4,6L14,4H5V21H7V14H12.6L13,16H20V6H14.4Z" />
-                                </svg>
+                                <iconify-icon icon="mdi:flag-checkered"></iconify-icon>
                             </span>
                             Rennen
                         </button>
                         <button id="nav-tab-layout" class="tab-btn" data-tab="tab-layout">
                             <span class="tab-icon">
-                                <svg viewBox="0 0 24 24">
-                                    <path fill="currentColor"
-                                        d="M4 5V19H20V5H4M18 7V11H13V7H18M11 7V17H6V7H11M13 13H18V17H13V13Z" />
-                                </svg>
+                                <iconify-icon icon="mdi:view-dashboard-outline"></iconify-icon>
                             </span>
                             Layout
                         </button>
                         <button id="nav-tab-registration" class="tab-btn" data-tab="tab-registration">
                             <span class="tab-icon">
-                                <svg viewBox="0 0 24 24">
-                                    <path fill="currentColor"
-                                        d="M21.1,12.5L19.7,11.1C19.3,10.7 18.7,10.7 18.3,11.1L14.5,14.9L15.5,15.9L19.3,12.1L20.7,13.5L21.1,12.5M12,2C10.89,2 10,2.89 10,4V20C10,21.11 10.89,22 12,22H18C19.11,22 20,21.11 20,20V15.5L18,17.5V20H12V4H18V7H20V4C20,2.89 19.11,2 18,2H12Z" />
-                                </svg>
+                                <iconify-icon icon="mdi:file-document-edit-outline"></iconify-icon>
                             </span>
                             Anmeldung
                         </button>
                         <button id="nav-tab-users" class="tab-btn" data-tab="tab-users">
                             <span class="tab-icon">
-                                <svg viewBox="0 0 24 24">
-                                    <path fill="currentColor"
-                                        d="M16 17V19H2V17S2 13 9 13 16 17 16 17M12.5 7.5A3.5 3.5 0 1 0 9 11A3.5 3.5 0 0 0 12.5 7.5M15.94 13A5.37 5.37 0 0 1 18 17V19H22V17S22 13.37 15.94 13M15 4A3.5 3.5 0 1 0 19 7.5A3.5 3.5 0 0 0 15 4Z" />
-                                </svg>
+                                <iconify-icon icon="mdi:account-group-outline"></iconify-icon>
                             </span>
                             <span id="nav-tab-users-label">Benutzer</span>
                         </button>
@@ -518,17 +470,12 @@
             <div id="editActions"
                 style="display: none; margin-bottom: 1rem; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
                 <button id="addParticipantBtn" class="btn btn-start" style="width: auto; padding: 0.6rem 1.2rem;">
-                    <svg style="width:20px;height:20px;vertical-align:middle;margin-right:6px;" viewBox="0 0 24 24">
-                        <path fill="currentColor" d="M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z" />
-                    </svg>
+                    <iconify-icon icon="line-md:account-add" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;"></iconify-icon>
                     Teilnehmer hinzufügen
                 </button>
                 <button id="appendParticipantsBtn" class="btn btn-outline"
                     style="width: auto; padding: 0.6rem 1.2rem; border-color: var(--primary); color: var(--text-main);">
-                    <svg style="width:20px;height:20px;vertical-align:middle;margin-right:6px;" viewBox="0 0 24 24">
-                        <path fill="currentColor"
-                            d="M15,14H19V17H22V19H19V22H17V19H14V17H17V14H15M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z" />
-                    </svg>
+                    <iconify-icon icon="line-md:upload-loop" style="width:20px;height:20px;vertical-align:middle;margin-right:6px;"></iconify-icon>
                     Liste importieren
                 </button>
 
@@ -538,17 +485,11 @@
                     <span id="bulkSelectionCount" style="font-size: 0.85rem; opacity: 0.7; margin-right: 0.25rem;">0
                         ausgewählt</span>
                     <button id="bulkTagBtn" class="btn btn-outline tiny" style="border-color: var(--primary);">
-                        <svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                d="M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.89,2 2,2.89 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.45 21.77,11.95 21.41,11.58Z" />
-                        </svg>
+                        <iconify-icon icon="mdi:tag-plus-outline" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></iconify-icon>
                         Kategorie zuweisen
                     </button>
                     <button id="bulkDeleteBtn" class="btn btn-outline tiny danger-text">
-                        <svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
-                        </svg>
+                        <iconify-icon icon="line-md:trash" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></iconify-icon>
                         Löschen
                     </button>
                 </div>
@@ -645,10 +586,7 @@
                         style="flex: 1;">
                     <button type="button" id="resetDurationBtn" class="btn btn-outline tiny"
                         style="height: 38px; white-space: nowrap;" title="Duration löschen und mit Zeitstempel rechnen">
-                        <svg style="width:14px;height:14px;vertical-align:middle;margin-right:3px;" viewBox="0 0 24 24">
-                            <path fill="currentColor"
-                                d="M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19V4M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z" />
-                        </svg>
+                        <iconify-icon icon="line-md:trash" style="width:14px;height:14px;vertical-align:middle;margin-right:3px;"></iconify-icon>
                         Reset
                     </button>
                 </div>
@@ -690,10 +628,7 @@
             <div class="setting-item"
                 style="margin-bottom: 1.5rem; background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: 12px; padding: 1rem;">
                 <label style="font-weight: 600; margin-bottom: 0.5rem; display: block;">
-                    <svg style="width:16px;height:16px;vertical-align:middle;margin-right:4px;" viewBox="0 0 24 24">
-                        <path fill="currentColor"
-                            d="M5.5,7A1.5,1.5 0 0,1 4,5.5A1.5,1.5 0 0,1 5.5,4A1.5,1.5 0 0,1 7,5.5A1.5,1.5 0 0,1 5.5,7M21.41,11.58L12.41,2.58C12.05,2.22 11.55,2 11,2H4C2.89,2 2,2.89 2,4V11C2,11.55 2.22,12.05 2.59,12.41L11.58,21.41C11.95,21.77 12.45,22 13,22C13.55,22 14.05,21.77 14.41,21.41L21.41,14.41C21.78,14.05 22,13.55 22,13C22,12.45 21.77,11.95 21.41,11.58Z" />
-                    </svg>
+                    <iconify-icon icon="mdi:tag-plus-outline" style="width:16px;height:16px;vertical-align:middle;margin-right:4px;"></iconify-icon>
                     Kategorien für markierte Teilnehmer
                 </label>
                 <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -825,26 +760,13 @@
             <div class="designer-toolbar">
                 <div class="toolbar-group">
                     <button type="button" class="tool-btn" data-command="bold" title="Fett">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
-                            <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z" />
-                        </svg>
+                        <iconify-icon icon="mdi:format-bold" width="18" height="18"></iconify-icon>
                     </button>
                     <button type="button" class="tool-btn" data-command="italic" title="Kursiv">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <line x1="19" y1="4" x2="10" y2="4" />
-                            <line x1="14" y1="20" x2="5" y2="20" />
-                            <line x1="15" y1="4" x2="9" y2="20" />
-                        </svg>
+                        <iconify-icon icon="mdi:format-italic" width="18" height="18"></iconify-icon>
                     </button>
                     <button type="button" class="tool-btn" data-command="underline" title="Unterstrichen">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2.5">
-                            <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3" />
-                            <line x1="4" y1="21" x2="20" y2="21" />
-                        </svg>
+                        <iconify-icon icon="mdi:format-underline" width="18" height="18"></iconify-icon>
                     </button>
                 </div>
 
@@ -852,31 +774,13 @@
 
                 <div class="toolbar-group">
                     <button type="button" class="tool-btn" data-command="justifyLeft" title="Links">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <line x1="17" y1="10" x2="3" y2="10" />
-                            <line x1="21" y1="6" x2="3" y2="6" />
-                            <line x1="21" y1="14" x2="3" y2="14" />
-                            <line x1="17" y1="18" x2="3" y2="18" />
-                        </svg>
+                        <iconify-icon icon="mdi:format-align-left" width="18" height="18"></iconify-icon>
                     </button>
                     <button type="button" class="tool-btn" data-command="justifyCenter" title="Zentriert">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <line x1="18" y1="10" x2="6" y2="10" />
-                            <line x1="21" y1="6" x2="3" y2="6" />
-                            <line x1="21" y1="14" x2="3" y2="14" />
-                            <line x1="18" y1="18" x2="6" y2="18" />
-                        </svg>
+                        <iconify-icon icon="mdi:format-align-center" width="18" height="18"></iconify-icon>
                     </button>
                     <button type="button" class="tool-btn" data-command="justifyRight" title="Rechts">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <line x1="21" y1="10" x2="7" y2="10" />
-                            <line x1="21" y1="6" x2="3" y2="6" />
-                            <line x1="21" y1="14" x2="3" y2="14" />
-                            <line x1="21" y1="18" x2="7" y2="18" />
-                        </svg>
+                        <iconify-icon icon="mdi:format-align-right" width="18" height="18"></iconify-icon>
                     </button>
                 </div>
 
@@ -884,26 +788,10 @@
 
                 <div class="toolbar-group">
                     <button type="button" class="tool-btn" data-command="insertUnorderedList" title="Aufzählung">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <line x1="8" y1="6" x2="21" y2="6" />
-                            <line x1="8" y1="12" x2="21" y2="12" />
-                            <line x1="8" y1="18" x2="21" y2="18" />
-                            <line x1="3" y1="6" x2="3.01" y2="6" />
-                            <line x1="3" y1="12" x2="3.01" y2="12" />
-                            <line x1="3" y1="18" x2="3.01" y2="18" />
-                        </svg>
+                        <iconify-icon icon="mdi:format-list-bulleted" width="18" height="18"></iconify-icon>
                     </button>
                     <button type="button" class="tool-btn" data-command="insertOrderedList" title="Nummerierung">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <line x1="10" y1="6" x2="21" y2="6" />
-                            <line x1="10" y1="12" x2="21" y2="12" />
-                            <line x1="10" y1="18" x2="21" y2="18" />
-                            <path d="M4 6h1v4" />
-                            <path d="M4 10h2" />
-                            <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1" />
-                        </svg>
+                        <iconify-icon icon="mdi:format-list-numbered" width="18" height="18"></iconify-icon>
                     </button>
                 </div>
 
@@ -927,10 +815,7 @@
                 <div class="toolbar-group dropdown-container">
                     <button type="button" class="tool-btn dropdown-trigger">
                         <span>Variablen</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" style="margin-left:5px;">
-                            <polyline points="6 9 12 15 18 9" />
-                        </svg>
+                        <iconify-icon icon="mdi:chevron-down" width="12" height="12" style="margin-left:5px;"></iconify-icon>
                     </button>
                     <div class="insert-dropdown-content card">
                         <button type="button" class="dropdown-item placeholder-btn" data-value="[DATUM]">Datum</button>
@@ -945,10 +830,7 @@
                 <div class="toolbar-group dropdown-container">
                     <button type="button" class="tool-btn dropdown-trigger">
                         <span>Formular</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" style="margin-left:5px;">
-                            <polyline points="6 9 12 15 18 9" />
-                        </svg>
+                        <iconify-icon icon="mdi:chevron-down" width="12" height="12" style="margin-left:5px;"></iconify-icon>
                     </button>
                     <div class="insert-dropdown-content card">
                         <button type="button" class="dropdown-item insert-btn" data-type="text">Eingabefeld</button>
@@ -960,10 +842,7 @@
                 <div class="toolbar-group dropdown-container">
                     <button type="button" class="tool-btn dropdown-trigger">
                         <span>Einfügen</span>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" style="margin-left:5px;">
-                            <polyline points="6 9 12 15 18 9" />
-                        </svg>
+                        <iconify-icon icon="mdi:chevron-down" width="12" height="12" style="margin-left:5px;"></iconify-icon>
                     </button>
                     <div class="insert-dropdown-content card">
                         <button type="button" class="dropdown-item insert-btn" data-type="line">Horiz. Linie</button>
@@ -975,10 +854,7 @@
 
                 <div class="toolbar-group">
                     <button type="button" id="toggleFooterBtn" class="tool-btn" title="Footer bearbeiten">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2">
-                            <rect x="3" y="15" width="18" height="6" rx="2" />
-                        </svg>
+                        <iconify-icon icon="mdi:page-layout-footer" width="18" height="18"></iconify-icon>
                         <span style="font-size: 11px; margin-left: 5px;">Footer</span>
                     </button>
                 </div>

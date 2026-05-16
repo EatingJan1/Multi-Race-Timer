@@ -45,81 +45,7 @@ function renderTagBadges(tags, extraClasses = '') {
     return `<div class="${classes}">${tags.map(tag => `<span class="tag-badge">${escapeHtml(tag)}</span>`).join('')}</div>`;
 }
 
-function replaceSvgNode(svg, iconName) {
-    if (!svg || svg.tagName.toLowerCase() !== 'svg') return;
-    if (!iconName) return;
-    if (svg.querySelector('defs')) return; // Keep non-icon SVG defs (e.g. filters)
 
-    const icon = document.createElement('iconify-icon');
-    icon.setAttribute('icon', iconName);
-    icon.setAttribute('aria-hidden', 'true');
-
-    const width = svg.getAttribute('width');
-    const height = svg.getAttribute('height');
-    if (width) icon.setAttribute('width', width);
-    if (height) icon.setAttribute('height', height);
-
-    const cls = svg.getAttribute('class');
-    if (cls) icon.setAttribute('class', cls);
-
-    const style = svg.getAttribute('style');
-    if (style) icon.setAttribute('style', style);
-
-    svg.replaceWith(icon);
-}
-
-function applyIconifyIcons() {
-    const mappedIcons = [
-        ['#backendError .error-content svg', 'mdi:alert-circle-outline'],
-        ['#noPermissionOverlay .overlay-content svg', 'mdi:lock-outline'],
-        ['#backToLandingBtn svg', 'mdi:arrow-left'],
-        ['#exportBtn svg', 'mdi:file-export-outline'],
-        ['#importCsvBtn svg', 'mdi:plus'],
-        ['#createEmptyRaceBtn svg', 'mdi:table-plus'],
-        ['.dropdown-content a[onclick*="csvFile"] svg', 'mdi:file-upload-outline'],
-        ['#settingsBtn svg', 'mdi:cog-outline'],
-        ['#nav-tab-race .tab-icon svg', 'mdi:flag-checkered'],
-        ['#nav-tab-layout .tab-icon svg', 'mdi:view-dashboard-outline'],
-        ['#nav-tab-registration .tab-icon svg', 'mdi:file-document-edit-outline'],
-        ['#nav-tab-users .tab-icon svg', 'mdi:account-group-outline'],
-        ['#addParticipantBtn svg', 'mdi:account-plus-outline'],
-        ['#appendParticipantsBtn svg', 'mdi:account-multiple-plus-outline'],
-        ['#bulkTagBtn svg', 'mdi:tag-plus-outline'],
-        ['#bulkDeleteBtn svg', 'mdi:trash-can-outline'],
-        ['#resetDurationBtn svg', 'mdi:trash-can-outline'],
-        ['#formDesignerModal .tool-btn[data-command="bold"] svg', 'mdi:format-bold'],
-        ['#formDesignerModal .tool-btn[data-command="italic"] svg', 'mdi:format-italic'],
-        ['#formDesignerModal .tool-btn[data-command="underline"] svg', 'mdi:format-underline'],
-        ['#formDesignerModal .tool-btn[data-command="justifyLeft"] svg', 'mdi:format-align-left'],
-        ['#formDesignerModal .tool-btn[data-command="justifyCenter"] svg', 'mdi:format-align-center'],
-        ['#formDesignerModal .tool-btn[data-command="justifyRight"] svg', 'mdi:format-align-right'],
-        ['#formDesignerModal .tool-btn[data-command="insertUnorderedList"] svg', 'mdi:format-list-bulleted'],
-        ['#formDesignerModal .tool-btn[data-command="insertOrderedList"] svg', 'mdi:format-list-numbered'],
-        ['#toggleFooterBtn svg', 'mdi:page-layout-footer'],
-        ['#formDesignerModal .dropdown-trigger svg', 'mdi:chevron-down']
-    ];
-
-    mappedIcons.forEach(([selector, icon]) => {
-        document.querySelectorAll(selector).forEach(svg => replaceSvgNode(svg, icon));
-    });
-
-    // Convert all remaining icon-like SVGs (except technical defs) to Iconify fallback.
-    document.querySelectorAll('svg').forEach(svg => {
-        if (svg.closest('svg[style*="display: none"]')) return;
-        if (svg.querySelector('defs')) return;
-        replaceSvgNode(svg, 'mdi:help-circle-outline');
-    });
-}
-
-
-function waitAndApplyIconify(retries = 25) {
-    if (window.customElements && window.customElements.get('iconify-icon')) {
-        applyIconifyIcons();
-        return;
-    }
-    if (retries <= 0) return;
-    setTimeout(() => waitAndApplyIconify(retries - 1), 120);
-}
 
 function normalizeTagVersion(tag) {
     if (!tag) return [];
@@ -3873,5 +3799,5 @@ async function downloadSignedPdf(index) {
 
 window.downloadSignedPdf = downloadSignedPdf;
 
-waitAndApplyIconify();
+
 init();

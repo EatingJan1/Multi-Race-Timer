@@ -208,15 +208,6 @@ h1 {
     color: var(--text-muted);
 }
 
-.status-indicator {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--accent-green);
-    box-shadow: 0 0 10px var(--accent-green);
-    transition: all 0.3s ease;
-}
-
 .visibility-indicator {
     width: 8px;
     height: 8px;
@@ -227,10 +218,6 @@ h1 {
     transition: all 0.3s ease;
 }
 
-.column-config-item.disabled .status-indicator {
-    background: var(--text-muted);
-    box-shadow: none;
-}
 
 .column-config-item.drag-over-top {
     border-top: 2px solid var(--primary);
@@ -278,21 +265,6 @@ h1 {
 
 
 
-.drag-handle {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    color: var(--text-muted);
-    opacity: 0.5;
-}
-
-.drag-handle span {
-    width: 3px;
-    height: 3px;
-    background: currentColor;
-    border-radius: 50%;
-}
-
 /* Dots for the handle */
 .drag-icon {
     display: grid;
@@ -305,8 +277,7 @@ h1 {
     /* Disable browser handling like scrolling/zooming */
 }
 
-.col-label,
-.swipe-hint {
+.col-label {
     pointer-events: none;
     /* Let the item handle clicks/touches */
 }
@@ -316,74 +287,6 @@ h1 {
 }
 
 
-
-/* Background for swipe actions */
-.column-config-item-wrapper {
-    position: relative;
-    border-radius: 12px;
-    overflow: hidden;
-    background: rgba(255, 0, 0, 0.2);
-    /* Hide color */
-}
-
-.column-config-item-wrapper.showing {
-    background: rgba(0, 255, 0, 0.2);
-    /* Show color */
-}
-
-/* Toggle-Switch zum Deaktivieren/Aktivieren */
-.col-toggle {
-    appearance: none;
-    -webkit-appearance: none;
-    width: 34px;
-    height: 18px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    position: relative;
-    cursor: pointer;
-    transition: all 0.3s;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    flex-shrink: 0;
-    /* Verhindert das Quetschen auf kleinen Bildschirmen */
-}
-
-.col-toggle:checked {
-    background: var(--accent-green);
-    border-color: var(--accent-green);
-}
-
-.col-toggle::before {
-    content: "";
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    top: 1px;
-    left: 1px;
-    background: white;
-    transition: 0.3s;
-}
-
-.col-toggle:checked::before {
-    transform: translateX(16px);
-}
-
-.col-toggle:disabled {
-    cursor: not-allowed;
-    opacity: 0.3;
-    filter: grayscale(1);
-}
-
-.swipe-hint {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: white;
-    opacity: 0.8;
-}
 
 .col-label {
     flex-grow: 1;
@@ -995,16 +898,6 @@ tr.active-row td {
 
 
 
-.settings-section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin: 1.5rem 0 1rem 0;
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--primary);
-}
-
 /* Custom Checkbox Styling */
 .check-container {
     display: block;
@@ -1361,35 +1254,9 @@ input:checked+.switch-slider:before {
     font-weight: 800;
 }
 
-.pdf-viewer-container {
-    position: relative;
-    width: 100%;
-    margin-bottom: 3rem;
-    border-radius: 24px;
-    overflow: hidden;
-    background: white;
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
-}
-
 #regPdfCanvas {
     width: 100%;
     display: block;
-}
-
-.pdf-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-.pdf-input-wrapper {
-    position: absolute;
-    pointer-events: all;
-    display: flex;
-    flex-direction: column;
 }
 
 .pdf-input {
@@ -1431,10 +1298,6 @@ input:checked+.switch-slider:before {
     border-radius: 20px;
 }
 
-.reg-actions {
-    margin-top: 3rem;
-}
-
 .btn.large {
     padding: 1.25rem 3rem;
     font-size: 1.1rem;
@@ -1468,57 +1331,6 @@ input:checked+.switch-slider:before {
     display: block;
     /* Flow naturally */
     line-height: 1.6;
-}
-
-.a4-form-field {
-    display: inline-block;
-    vertical-align: baseline;
-    margin: 0 4px;
-}
-
-.a4-text-block {
-    display: inline;
-    white-space: pre-wrap;
-    margin: 0;
-}
-
-.a4-label {
-    display: none !important;
-    /* Force hide labels */
-}
-
-.a4-input {
-    display: inline-block;
-    min-width: 100px;
-    border: none;
-    border-bottom: 1px solid #ffffff;
-    background: transparent;
-    padding: 2px 5px;
-    font-family: inherit;
-    font-size: 1rem;
-    color: #ffffff;
-    outline: none;
-    vertical-align: baseline;
-}
-
-.designer-preview-btn {
-    margin-top: 15px;
-}
-
-/* Drag and Drop Designer Styles */
-.form-field-item {
-    cursor: move;
-    border: 1px solid var(--glass-border);
-    background: rgba(255, 255, 255, 0.05);
-    margin-bottom: 8px;
-    padding: 8px;
-    border-radius: 8px;
-    transition: transform 0.2s, background 0.2s;
-}
-
-.form-field-item.dragging {
-    opacity: 0.5;
-    background: var(--accent-blue);
 }
 
 /* Form Designer Modal Styles */
@@ -1639,10 +1451,6 @@ input:checked+.switch-slider:before {
 
 .tool-btn.active {
     background: var(--primary);
-}
-
-.insert-dropdown-btn:hover {
-    background: rgba(255, 255, 255, 0.15);
 }
 
 .dropdown-container {
@@ -1841,12 +1649,6 @@ input:checked+.switch-slider:before {
     border-top: 1px solid #000;
     margin: 5px 0;
     width: 100%;
-}
-
-.form-designer-logo {
-    display: block;
-    margin: 0 auto 1cm auto;
-    max-height: 80px;
 }
 
 .form-signature-box {
@@ -2732,9 +2534,6 @@ input:checked+.switch-slider:before {
         text-align: right !important;
     }
 
-    .settings-section {
-        display: none;
-    }
 }
 
 /* --- SETTINGS MODAL REDESIGN (TABBED) --- */
@@ -2899,15 +2698,6 @@ input:checked+.switch-slider:before {
     border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 
-.user-edit-panel {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid var(--primary);
-    border-radius: 24px;
-    padding: 2.5rem;
-    margin-top: 2rem;
-    box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6);
-}
-
 .form-group {
     margin-bottom: 1.5rem;
 }
@@ -2946,35 +2736,11 @@ input:checked+.switch-slider:before {
     border-radius: 10px;
 }
 
-.form-actions-mini {
-    display: flex;
-    gap: 0.75rem;
-    margin-top: 1.25rem;
-}
-
 .btn.tiny {
     padding: 6px 16px;
     font-size: 0.8rem;
     min-width: unset;
 }
-
-.user-edit-panel.sidebar-edit {
-    padding: 1.5rem;
-    margin-top: 0;
-    margin-bottom: 1.5rem;
-    border-radius: 20px;
-    background: rgba(0, 0, 0, 0.3);
-    border-color: rgba(99, 102, 241, 0.4);
-    box-shadow: none;
-}
-
-.user-edit-panel.sidebar-edit h4 {
-    font-size: 1rem;
-    margin-bottom: 1.25rem;
-    color: var(--primary);
-    font-weight: 700;
-}
-
 
 .designer-promo-card {
     background: linear-gradient(135deg, rgba(99, 102, 241, 0.12) 0%, rgba(59, 130, 246, 0.06) 100%);
@@ -3125,24 +2891,9 @@ input:checked+.switch-slider:before {
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     }
 
-    .user-edit-panel.sidebar-edit {
-        padding: 1rem;
-        margin-bottom: 0.5rem;
-        border-radius: 12px;
-    }
-
-    .user-edit-panel.sidebar-edit h4 {
-        margin-bottom: 0.4rem;
-        font-size: 0.9rem;
-    }
-
     .modal-footer-actions {
         margin-top: 2rem;
         padding-bottom: 2rem;
-    }
-
-    .user-edit-panel {
-        padding: 1rem;
     }
 
     /* Mobile A4 Registration View Scaling */
@@ -3215,10 +2966,6 @@ input:checked+.switch-slider:before {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.25rem;
-}
-
-.user-race-section {
-    position: relative;
 }
 
 .race-access-container {
