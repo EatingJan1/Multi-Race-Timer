@@ -32,6 +32,7 @@
 </head>
 
 <body>
+    <div id="toastContainer" class="toast-container" aria-live="polite" aria-atomic="true"></div>
     <div id="backendError" class="backend-error-notification" style="display: none;">
         <div class="error-content">
             <iconify-icon icon="line-md:alert-circle-loop" width="20" height="20"></iconify-icon>
@@ -59,7 +60,12 @@
             </div>
             <div class="hero-section">
                 <h1 class="hero-title">Rennen <span class="accent-text">Portal</span></h1>
-                <p class="hero-subtitle">Alle Rennen im Überblick. Melde dich jetzt an oder verfolge die Ergebnisse.</p>
+                <p class="hero-subtitle">Alle Rennen in einem klaren Live-Portal. Anmeldung, Teilnehmerliste und Ergebnisse in einem modernen Ablauf.</p>
+                <div class="hero-chips">
+                    <div class="hero-chip"><iconify-icon icon="svg-spinners:clock"></iconify-icon>Echtzeit-Zeiten</div>
+                    <div class="hero-chip"><iconify-icon icon="line-md:check-all"></iconify-icon>Schnelle Anmeldung</div>
+                    <div class="hero-chip"><iconify-icon icon="line-md:document-list"></iconify-icon>Saubere Resultate</div>
+                </div>
             </div>
         </header>
 
@@ -532,12 +538,11 @@
     </div>
 
     <!-- Login Modal - Forced Overlay -->
-    <div id="loginModal" class="modal"
-        style="display: none; z-index: 9999; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px);">
-        <div class="modal-content card" style="max-width: 400px;">
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Zugriff</h1>
-                <p class="subtitle">Bitte authentifizieren Sie sich.</p>
+    <div id="loginModal" class="modal login-modal">
+        <div class="modal-content card login-modal-card">
+            <div class="login-modal-head">
+                <h1><iconify-icon icon="line-md:account-small"></iconify-icon>Admin-Bereich</h1>
+                <p class="subtitle">Melden Sie sich mit Ihrem Admin-Konto an, um Rennen zu verwalten.</p>
             </div>
 
             <form id="loginForm">
@@ -549,14 +554,20 @@
                     <label>Passwort</label>
                     <input type="password" id="loginPass" class="form-input" placeholder="••••••••" required>
                 </div>
-                <div id="loginError" style="color: #ff4d4d; margin-bottom: 1rem; display: none; font-size: 0.9rem;">
-                    Zugangsdaten inkorrekt.
+                <div id="loginError" class="login-error">
+                    Benutzername oder Passwort ist nicht korrekt.
                 </div>
-                <div class="modal-actions" style="margin-top: 1rem; flex-direction: column; gap: 0.5rem;">
+                <div class="modal-actions login-modal-actions">
                     <button type="submit" class="btn btn-primary"
-                        style="width: 100%; justify-content: center;">Einloggen</button>
+                        style="width: 100%; justify-content: center;">
+                        <iconify-icon icon="line-md:login"></iconify-icon>
+                        Als Admin anmelden
+                    </button>
                     <button type="button" id="cancelLoginBtn" class="btn btn-outline"
-                        style="width: 100%; justify-content: center;">Abbrechen</button>
+                        style="width: 100%; justify-content: center;">
+                        <iconify-icon icon="line-md:close-small"></iconify-icon>
+                        Abbrechen
+                    </button>
                 </div>
             </form>
         </div>
@@ -879,18 +890,6 @@
             <input type="file" id="designerLogoUpload" style="display:none;" accept="image/*">
         </div>
     </div>
-
-    <!-- Liquid Glass SVG Filter -->
-    <svg style="display: none;">
-        <defs>
-            <filter id="mini-liquid-lens">
-                <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
-                <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -7"
-                    result="liquid" />
-                <feComposite in="SourceGraphic" in2="liquid" operator="atop" />
-            </filter>
-        </defs>
-    </svg>
 
     <footer>
         <div class="app-footer">

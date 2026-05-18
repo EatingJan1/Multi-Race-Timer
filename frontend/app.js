@@ -45,6 +45,32 @@ function renderTagBadges(tags, extraClasses = '') {
     return `<div class="${classes}">${tags.map(tag => `<span class="tag-badge">${escapeHtml(tag)}</span>`).join('')}</div>`;
 }
 
+function showToast(message, type = 'info', timeoutMs = 4200, title = '') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast--${type}`;
+
+    const heading = title || (
+        type === 'success' ? 'Erfolg' :
+            type === 'warning' ? 'Hinweis' :
+                type === 'error' ? 'Fehler' : 'Info'
+    );
+
+    const safeMessage = String(message ?? '').trim() || 'Unbekannte Meldung';
+    toast.innerHTML = `<div><strong>${escapeHtml(heading)}</strong><p>${escapeHtml(safeMessage)}</p></div>`;
+    container.appendChild(toast);
+
+    const remove = () => {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+    };
+    setTimeout(remove, timeoutMs);
+}
+
+window.showToast = showToast;
+window.alert = (message) => showToast(message, 'info');
+
 
 
 function normalizeTagVersion(tag) {
@@ -196,7 +222,7 @@ async function updateAdminReleaseNotice() {
                     console.error(err);
                     updateBtn.disabled = false;
                     updateBtn.textContent = 'Update fehlgeschlagen';
-                    alert(err.message || 'Update fehlgeschlagen');
+                    showToast(err.message || 'Update fehlgeschlagen', 'error');
                 }
             };
             actionWrap.appendChild(updateBtn);
@@ -495,7 +521,7 @@ async function init() {
         openFormDesignerBtn.onclick = () => {
             // Überprüfen, ob das Gerät ein Mobilgerät ist (z.B. Bildschirmbreite kleiner als 768px)
             if (window.matchMedia("(max-width: 1024px)").matches && ('ontouchstart' in window)) {
-                alert("Der Formular-Designer ist nur auf dem Desktop verfügbar.");
+                showToast("Der Formular-Designer ist nur auf dem Desktop verfügbar.", 'warning');
                 return; // Funktion hier abbrechen
             }
 
@@ -537,15 +563,21 @@ async function init() {
     };
 
     if (saveFormDesigner) saveFormDesigner.onclick = async () => {
+        const cleanContent = sanitizeDesignerMarkup(designerContent.innerHTML);
+        const cleanFooter = sanitizeDesignerMarkup(designerFooter.innerHTML);
+
+        designerContent.innerHTML = cleanContent;
+        designerFooter.innerHTML = cleanFooter;
+
         currentRaceSettings.form_config = {
-            content: designerContent.innerHTML,
-            footer: designerFooter.innerHTML,
+            content: cleanContent,
+            footer: cleanFooter,
             footerEnabled: designerFooter.style.display !== 'none'
         };
         await saveRaceSettings();
         formDesignerModal.classList.remove('active');
         formDesignerModal.style.display = 'none';
-        alert("Formular gespeichert!");
+        showToast("Formular gespeichert!", "success");
     };
 
     if (toggleFooterBtn) toggleFooterBtn.onclick = () => {
@@ -774,6 +806,16 @@ function insertDraggableLogo(src) {
     makeLogoDraggable(div);
 }
 
+function sanitizeDesignerMarkup(html) {
+    const temp = document.createElement('div');
+    temp.innerHTML = html || '';
+
+    temp.querySelectorAll('.selected-item').forEach((el) => el.classList.remove('selected-item'));
+    temp.querySelectorAll('.resize-handle').forEach((el) => el.remove());
+
+    return temp.innerHTML;
+}
+
 function makeLogoDraggable(el) {
     let isDragging = false;
     let isResizing = false;
@@ -923,24 +965,29 @@ function createRaceCard(race) {
     const card = document.createElement('div');
     card.className = 'race-card';
     let statusBadge = '';
+    let statusIcon = 'line-md:calendar';
     if (race.settings.displaytype === 'finished') {
-        statusBadge = '<span class="badge badge-closed">Beendet</span>';
+        statusBadge = '<span class="badge badge-closed"><iconify-icon icon="line-md:check-all"></iconify-icon>Beendet</span>';
+        statusIcon = 'line-md:check-all';
     } else if (race.settings.displaytype === "open") {
-        statusBadge = '<span class="badge badge-live">Anmeldung Offen</span>';
+        statusBadge = '<span class="badge badge-live"><iconify-icon icon="line-md:circle-to-confirm-circle-transition"></iconify-icon>Anmeldung Offen</span>';
+        statusIcon = 'line-md:calendar-clock';
     } else if (race.settings.displaytype === 'registration_stop') {
-        statusBadge = '<span class="badge badge-closed">Anmeldung geschlossen</span>';
+        statusBadge = '<span class="badge badge-closed"><iconify-icon icon="line-md:close-circle"></iconify-icon>Anmeldung geschlossen</span>';
+        statusIcon = 'line-md:close-circle';
     } else {
-        statusBadge = '<span class="badge badge-future">Vorbereitung</span>';
+        statusBadge = '<span class="badge badge-future"><iconify-icon icon="line-md:loading-loop"></iconify-icon>Vorbereitung</span>';
     }
 
     card.innerHTML = `
         <div>
             <h3 class="race-card-title">${escapeHtml(race.name.replace(/_/g, ' '))}</h3>
             <div class="race-card-info">
+                <iconify-icon icon="${statusIcon}" width="18" height="18"></iconify-icon>
                 ${statusBadge}
             </div>
         </div>
-        <button class="btn btn-primary small">
+        <button class="btn btn-primary small race-card-cta">
             ${(race.settings.displaytype === 'finished' || race.settings.displaytype === 'registration_stop') ? 'Ergebnisse / Liste' : 'Details / Anmeldung'}
         </button>
     `;
@@ -1295,7 +1342,7 @@ async function loadPdfTemplate(raceName) {
         extractTextFields(textContent, viewport);
     } catch (e) {
         console.error("Detailed PDF load error:", e);
-        alert("Fehler beim Laden der PDF-Vorlage: " + e.message);
+        showToast("Fehler beim Laden der PDF-Vorlage: " + e.message, "error");
     }
 }
 
@@ -1369,11 +1416,12 @@ if (loginForm) {
                 loginPass.value = '';
                 await showAdminApp();
             } else {
+                loginError.textContent = "Benutzername oder Passwort ist nicht korrekt.";
                 loginError.style.display = 'block';
             }
         } catch (err) {
             console.error("Login failed", err);
-            loginError.textContent = "Verbindungsfehler";
+            loginError.textContent = "Anmeldung aktuell nicht möglich. Bitte Verbindung zum Backend prüfen.";
             loginError.style.display = 'block';
         }
     };
@@ -1609,19 +1657,10 @@ function startPolling() {
         if (adminApp.style.display === 'block') {
             await fetchSessions();
             if (currentRace && !editMode) await fetchParticipants();
-        } else if (landingPage.style.display === 'block') {
-            await fetchPublicRaces();
-        } else if (publicResultsPage.style.display === 'block' && currentRace) {
-            // For public results, we poll the results endpoint
-            try {
-                const res = await fetch(`${PUBLIC_BASE}/results/${currentRace}`);
-                if (res.ok) {
-                    publicParticipants = await res.json();
-                    renderPublicResults();
-                }
-            } catch (e) { console.error("Poll results failed", e); }
         }
-        // If on registrationPage, we don't need to poll anything from backend
+        // Public pages (landing/results/registration) are intentionally not polled.
+        // They refresh on page load/view change to avoid constant re-renders
+        // that restart animated icons.
     }, 2000);
 }
 
@@ -1927,11 +1966,11 @@ async function handleMainAction() {
     // Permission Checks
     const isReady = !p.start_time || p.end_time;
     if (isReady && !hasPermission('can_start')) {
-        alert("Fehlende Berechtigung: Starten");
+        showToast("Fehlende Berechtigung: Starten", "warning");
         return;
     }
     if (!isReady && !hasPermission('can_stop')) {
-        alert("Fehlende Berechtigung: Stoppen");
+        showToast("Fehlende Berechtigung: Stoppen", "warning");
         return;
     }
 
@@ -2028,12 +2067,12 @@ saveParticipantBtn.onclick = async () => {
     const sn = parseInt(editNumber.value);
     const tags = editTags.value.split(',').map(t => t.trim()).filter(t => t !== "");
     if (!name || isNaN(sn)) {
-        alert("Bitte Name und Startnummer korrekt ausfüllen.");
+        showToast("Bitte Name und Startnummer korrekt ausfüllen.", 'warning');
         return;
     }
     const dup = participants.find((p, i) => p.start_number === sn && i !== editingIndex);
     if (dup) {
-        alert(`Startnummer ${sn} wird bereits von ${dup.name} verwendet.`);
+        showToast(`Startnummer ${sn} wird bereits von ${dup.name} verwendet.`, 'warning');
         return;
     }
 
@@ -2196,7 +2235,7 @@ btnExportRace.onclick = async () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     } catch (err) {
-        alert('Fehler beim Export: ' + err.message);
+        showToast('Fehler beim Export: ' + err.message, 'error');
     }
 };
 
@@ -2513,7 +2552,7 @@ csvFileInput.addEventListener('change', async (e) => {
     const raceName = isAppendMode ? currentRace : file.name.replace(/\.[^/.]+$/, "").replace(/\s+/g, '_');
 
     if (!raceName && !isAppendMode) {
-        alert("Bitte wählen Sie zuerst ein Rennen aus oder importieren Sie ein neues.");
+        showToast("Bitte wählen Sie zuerst ein Rennen aus oder importieren Sie ein neues.", 'warning');
         return;
     }
 
@@ -2592,7 +2631,7 @@ csvFileInput.addEventListener('change', async (e) => {
             updateSettingsUI();
         }
     } catch (err) {
-        alert('Fehler beim Import: ' + err.message);
+        showToast('Fehler beim Import: ' + err.message, 'error');
     } finally {
         csvFileInput.value = '';
     }
@@ -2740,7 +2779,7 @@ function openAppendReviewModal() {
 
 if (appendParticipantsBtn) {
     appendParticipantsBtn.onclick = () => {
-        if (!currentRace) { alert("Bitte wählen Sie zuerst ein Rennen aus."); return; }
+        if (!currentRace) { showToast("Bitte wählen Sie zuerst ein Rennen aus.", 'warning'); return; }
         isAppendMode = true;
         csvFileInput.click();
     };
@@ -2755,7 +2794,7 @@ if (confirmAppendBtn) {
             appendReviewModal.style.display = 'none';
             await fetchParticipants();
         } catch (e) {
-            alert("Fehler beim Hinzufügen: " + e.message);
+            showToast("Fehler beim Hinzufügen: " + e.message, "error");
         } finally {
             confirmAppendBtn.disabled = false;
             confirmAppendBtn.textContent = "Jetzt Hinzufügen";
@@ -2783,7 +2822,7 @@ if (bulkDeleteBtn) {
         try {
             await apiCall(`/${currentRace}/people`, 'PUT', participants);
         } catch (e) {
-            alert("Fehler beim Löschen: " + e.message);
+            showToast("Fehler beim Löschen: " + e.message, "error");
         }
         await fetchParticipants();
     };
@@ -2842,7 +2881,7 @@ if (bulkTagApplyBtn) {
         try {
             await apiCall(`/${currentRace}/people`, 'PUT', participants);
         } catch (e) {
-            alert("Fehler beim Speichern: " + e.message);
+            showToast("Fehler beim Speichern: " + e.message, "error");
         }
 
         bulkTagPopover.style.display = 'none';
@@ -3097,7 +3136,7 @@ closeRacePermsBtn.onclick = () => racePermsModal.classList.remove('active');
 addRaceAccessBtn.onclick = () => {
     const raceName = addRaceSelect.value;
     if (!raceName) return;
-    if (currentEditingUserRaces[raceName]) return alert("Benutzer hat bereits Zugriff!");
+    if (currentEditingUserRaces[raceName]) return showToast("Benutzer hat bereits Zugriff!", 'warning');
 
     // Default: copy global perms (as requested)
     const permissions = {};
@@ -3141,10 +3180,10 @@ saveUserBtn.onclick = async () => {
     const username = targetUsernameInput.value;
     const password = targetPasswordInput.value;
 
-    if (!username) return alert("Benutzername erforderlich!");
+    if (!username) return showToast("Benutzername erforderlich!", 'warning');
     // For existing users, password can be empty (keep current)
     const isNew = !targetUsernameInput.readOnly;
-    if (isNew && !password) return alert("Passwort erforderlich!");
+    if (isNew && !password) return showToast("Passwort erforderlich!", 'warning');
 
     const globalPermKeys = ["is_admin", "can_start", "can_stop", "can_edit_form", "can_edit_stats", "can_edit_participants", "can_add_participants", "can_edit_settings", "can_manage_users", "can_see_all", "hide_ranking", "hide_duration"];
     const permissions = {};
@@ -3163,7 +3202,7 @@ saveUserBtn.onclick = async () => {
         document.getElementById('userEditModal').classList.remove('active');
         fetchUsers();
     } catch (e) {
-        alert("Speichern fehlgeschlagen: " + e.message);
+        showToast("Speichern fehlgeschlagen: " + e.message, 'error');
     }
 };
 
@@ -3173,7 +3212,7 @@ async function deleteUser(username) {
         await apiCall(`/users/${username}`, 'DELETE', null, AUTH_BASE);
         fetchUsers();
     } catch (e) {
-        alert("Löschen fehlgeschlagen: " + e.message);
+        showToast("Löschen fehlgeschlagen: " + e.message, 'error');
     }
 }
 
@@ -3184,7 +3223,7 @@ if (saveProfileBtn) {
         const msg = document.getElementById('profileMessage');
 
         if (!password || password.length < 8) {
-            alert("Das Passwort muss mindestens 8 Zeichen lang sein.");
+            showToast("Das Passwort muss mindestens 8 Zeichen lang sein.", 'warning');
             return;
         }
 
@@ -3198,7 +3237,7 @@ if (saveProfileBtn) {
                 setTimeout(() => { msg.style.display = 'none'; }, 3000);
             }
         } catch (e) {
-            alert("Fehler beim Speichern: " + e.message);
+            showToast("Fehler beim Speichern: " + e.message, 'error');
         }
     };
 }
@@ -3279,7 +3318,7 @@ async function generateRegistrationPdf() {
     }
 
     if (!participantName || participantName.toLowerCase() === "gast") {
-        alert("Bitte stellen Sie sicher, dass ein Namensfeld vorhanden und ausgefüllt ist.");
+        showToast("Bitte stellen Sie sicher, dass ein Namensfeld vorhanden und ausgefüllt ist.", 'warning');
         return null;
     }
 
@@ -3594,7 +3633,7 @@ async function generateRegistrationPdf() {
 
     } catch (err) {
         console.error("PDF Fehler:", err);
-        alert("Fehler beim Erstellen der PDF.");
+        showToast("Fehler beim Erstellen der PDF.", 'error');
         return null;
     }
 }
@@ -3632,13 +3671,13 @@ if (submitRegistrationBtn) {
                 const data = await res.json();
 
                 if (isKioskMode) {
-                    alert(`Erfolgreich angemeldet!\nDeine Startnummer: ${data.start_number}`);
+                showToast(`Erfolgreich angemeldet!\nDeine Startnummer: ${data.start_number}`, "success", 5200);
                     // Formular zurücksetzen für den nächsten Teilnehmer
                     signaturePad.clear();
                     renderDynamicForm(currentRaceSettings.form_config || {});
                     window.scrollTo(0, 0);
                 } else {
-                    alert(`Erfolgreich angemeldet!\nStartnummer: ${data.start_number}\n\nDein Beleg wird nun heruntergeladen.`);
+                    showToast(`Erfolgreich angemeldet!\nStartnummer: ${data.start_number}\n\nDein Beleg wird nun heruntergeladen.`, "success", 5200);
                     // Download auslösen
                     const link = document.createElement('a');
                     link.href = result.pdfBase64;
@@ -3650,11 +3689,11 @@ if (submitRegistrationBtn) {
                 }
             } else {
                 const err = await res.json();
-                alert("Fehler: " + (err.message || "Anmeldung fehlgeschlagen."));
+                showToast("Fehler: " + (err.message || "Anmeldung fehlgeschlagen."), "error");
             }
         } catch (e) {
             console.error("Submission failed", e);
-            alert("Verbindungsfehler bei der Anmeldung.");
+            showToast("Verbindungsfehler bei der Anmeldung.", "error");
         } finally {
             submitRegistrationBtn.disabled = false;
             submitRegistrationBtn.textContent = "JETZT REGISTRIEREN";
@@ -3757,7 +3796,7 @@ if (createEmptyRaceBtn) {
 
         } catch (error) {
             console.error(error);
-            alert("Fehler beim Erstellen des Rennens: " + error.message);
+            showToast("Fehler beim Erstellen des Rennens: " + error.message, 'error');
         }
     };
 }
@@ -3784,7 +3823,7 @@ async function downloadSignedPdf(index) {
         const response = await fetch(url, { credentials: 'include' });
         if (!response.ok) {
             const errBody = await response.json().catch(() => ({}));
-            alert(`PDF wurde nicht gefunden.\n\nDatei: ${filename}\nGrund: ${errBody.message || response.statusText}`);
+            showToast(`PDF wurde nicht gefunden.\nDatei: ${filename}\nGrund: ${errBody.message || response.statusText}`, 'error');
             return;
         }
 
@@ -3793,7 +3832,7 @@ async function downloadSignedPdf(index) {
         window.open(blobUrl, '_blank');
     } catch (e) {
         console.error("Download failed", e);
-        alert(`Konnte PDF nicht laden: ${e.message}\n\nBitte prüfen Sie die Internetverbindung.`);
+        showToast(`Konnte PDF nicht laden: ${e.message}\nBitte prüfen Sie die Internetverbindung.`, 'error');
     }
 }
 
