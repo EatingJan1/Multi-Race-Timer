@@ -448,7 +448,16 @@
                                 <label style="display:block">Tablet-Kiosk Modus</label>
                                 <span class="subtitle">Besonderer Modus für die Registrierung vor Ort.</span>
                             </div>
-                            <button id="startKioskBnt" class="btn btn-outline tiny">Starten</button>
+                            <div class="kiosk-actions">
+                                <button id="startKioskBnt" class="btn btn-outline tiny">
+                                    <iconify-icon icon="line-md:play-filled"></iconify-icon>
+                                    Starten
+                                </button>
+                                <button id="showKioskQrBtn" class="btn btn-primary tiny">
+                                    <iconify-icon icon="line-md:qr-code-twotone"></iconify-icon>
+                                    Show QR
+                                </button>
+                            </div>
                         </div>
                     </div>
 
@@ -537,11 +546,32 @@
         </div>
     </div>
 
+    <div id="kioskQrModal" class="modal">
+        <div class="modal-content card kiosk-qr-modal">
+            <div class="kiosk-qr-head">
+                <h2><iconify-icon icon="line-md:qr-code-twotone"></iconify-icon>Kiosk QR-Code</h2>
+                <p class="subtitle">Scannen Sie den Code auf dem Tablet oder öffnen Sie den Link direkt.</p>
+            </div>
+            <div class="kiosk-qr-body">
+                <img id="kioskQrImage" alt="Kiosk QR-Code">
+                <input id="kioskQrUrl" class="form-input tiny" readonly>
+            </div>
+            <div class="modal-actions">
+                <button type="button" id="copyKioskQrUrlBtn" class="btn btn-outline">
+                    <iconify-icon icon="line-md:clipboard-list"></iconify-icon>
+                    Link kopieren
+                </button>
+                <button type="button" id="closeKioskQrBtn" class="btn btn-primary">Schließen</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Login Modal - Forced Overlay -->
-    <div id="loginModal" class="modal login-modal">
-        <div class="modal-content card login-modal-card">
-            <div class="login-modal-head">
-                <h1><iconify-icon icon="line-md:account-small"></iconify-icon>Admin-Bereich</h1>
+    <div id="loginModal" class="modal"
+        style="display: none; z-index: 9999; background: rgba(0,0,0,0.9); backdrop-filter: blur(10px);">
+        <div class="modal-content card" style="max-width: 400px;">
+            <div style="text-align: center; margin-bottom: 2rem;">
+                <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">Admin-Bereich</h1>
                 <p class="subtitle">Melden Sie sich mit Ihrem Admin-Konto an, um Rennen zu verwalten.</p>
             </div>
 
@@ -554,20 +584,14 @@
                     <label>Passwort</label>
                     <input type="password" id="loginPass" class="form-input" placeholder="••••••••" required>
                 </div>
-                <div id="loginError" class="login-error">
+                <div id="loginError" style="color: #ff4d4d; margin-bottom: 1rem; display: none; font-size: 0.9rem;">
                     Benutzername oder Passwort ist nicht korrekt.
                 </div>
-                <div class="modal-actions login-modal-actions">
+                <div class="modal-actions" style="margin-top: 1rem; flex-direction: column; gap: 0.5rem;">
                     <button type="submit" class="btn btn-primary"
-                        style="width: 100%; justify-content: center;">
-                        <iconify-icon icon="line-md:login"></iconify-icon>
-                        Als Admin anmelden
-                    </button>
+                        style="width: 100%; justify-content: center;">Als Admin anmelden</button>
                     <button type="button" id="cancelLoginBtn" class="btn btn-outline"
-                        style="width: 100%; justify-content: center;">
-                        <iconify-icon icon="line-md:close-small"></iconify-icon>
-                        Abbrechen
-                    </button>
+                        style="width: 100%; justify-content: center;">Abbrechen</button>
                 </div>
             </form>
         </div>

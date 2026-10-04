@@ -425,6 +425,12 @@ const clearSignatureBtn = document.getElementById('clearSignatureBtn');
 // Status Select for Settings
 const raceStatusSelect = document.getElementById('raceStatusSelect');
 const startKioskBnt = document.getElementById('startKioskBnt');
+const showKioskQrBtn = document.getElementById('showKioskQrBtn');
+const kioskQrModal = document.getElementById('kioskQrModal');
+const kioskQrImage = document.getElementById('kioskQrImage');
+const kioskQrUrl = document.getElementById('kioskQrUrl');
+const copyKioskQrUrlBtn = document.getElementById('copyKioskQrUrlBtn');
+const closeKioskQrBtn = document.getElementById('closeKioskQrBtn');
 const viewActivePdfBtn = document.getElementById('viewActivePdfBtn');
 
 // Public Results Elements
@@ -563,15 +569,9 @@ async function init() {
     };
 
     if (saveFormDesigner) saveFormDesigner.onclick = async () => {
-        const cleanContent = sanitizeDesignerMarkup(designerContent.innerHTML);
-        const cleanFooter = sanitizeDesignerMarkup(designerFooter.innerHTML);
-
-        designerContent.innerHTML = cleanContent;
-        designerFooter.innerHTML = cleanFooter;
-
         currentRaceSettings.form_config = {
-            content: cleanContent,
-            footer: cleanFooter,
+            content: designerContent.innerHTML,
+            footer: designerFooter.innerHTML,
             footerEnabled: designerFooter.style.display !== 'none'
         };
         await saveRaceSettings();
@@ -804,16 +804,6 @@ function insertDraggableLogo(src) {
 
     designerContent.appendChild(div);
     makeLogoDraggable(div);
-}
-
-function sanitizeDesignerMarkup(html) {
-    const temp = document.createElement('div');
-    temp.innerHTML = html || '';
-
-    temp.querySelectorAll('.selected-item').forEach((el) => el.classList.remove('selected-item'));
-    temp.querySelectorAll('.resize-handle').forEach((el) => el.remove());
-
-    return temp.innerHTML;
 }
 
 function makeLogoDraggable(el) {
@@ -3274,21 +3264,67 @@ if (startKioskBnt) {
         if (!currentRace) return;
 
         try {
-            const hash = btoa(currentRace);
-
-            const res = await apiCall(`/${currentRace}/genkey`, 'GET');
-            const key = res["key"];
-
-            const url = `${window.location.origin}${window.location.pathname}?k=${hash}&y=${key}`;
-
-
-            open(url, '_blank');
-            //open(url, '_blank', );
+            const url = await createKioskLaunchUrl();
+            window.open(url, '_blank');
         } catch (err) {
             console.error("Kiosk launch failed:", err);
+            showToast("Kiosk-Link konnte nicht erstellt werden.", "error");
         }
 
     };
+}
+
+if (showKioskQrBtn) {
+    showKioskQrBtn.onclick = async () => {
+        if (!currentRace) {
+            showToast("Bitte zuerst ein Rennen auswählen.", "warning");
+            return;
+        }
+
+        try {
+            const url = await createKioskLaunchUrl();
+            const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(url)}`;
+            if (kioskQrImage) kioskQrImage.src = qrSrc;
+            if (kioskQrUrl) kioskQrUrl.value = url;
+            if (kioskQrModal) {
+                kioskQrModal.classList.add('active');
+                kioskQrModal.style.display = 'flex';
+            }
+        } catch (err) {
+            console.error("Kiosk QR failed:", err);
+            showToast("QR-Code konnte nicht erstellt werden.", "error");
+        }
+    };
+}
+
+if (copyKioskQrUrlBtn) {
+    copyKioskQrUrlBtn.onclick = async () => {
+        try {
+            const text = kioskQrUrl ? kioskQrUrl.value : '';
+            if (!text) return;
+            await navigator.clipboard.writeText(text);
+            showToast("Kiosk-Link kopiert.", "success");
+        } catch (e) {
+            showToast("Kopieren nicht möglich. Bitte Link manuell markieren.", "warning");
+        }
+    };
+}
+
+if (closeKioskQrBtn) {
+    closeKioskQrBtn.onclick = () => {
+        if (kioskQrModal) {
+            kioskQrModal.classList.remove('active');
+            kioskQrModal.style.display = 'none';
+        }
+    };
+}
+
+async function createKioskLaunchUrl() {
+    if (!currentRace) throw new Error('no-race');
+    const hash = btoa(currentRace);
+    const res = await apiCall(`/${currentRace}/genkey`, 'GET');
+    const key = res.key;
+    return `${window.location.origin}${window.location.pathname}?k=${hash}&y=${key}`;
 }
 
 if (backToLandingBtn) backToLandingBtn.onclick = () => {
@@ -3706,6 +3742,10 @@ window.onclick = (e) => {
     if (e.target == settingsModal) settingsModal.classList.remove('active');
     if (e.target == editParticipantModal) editParticipantModal.classList.remove('active');
     if (e.target == exportModal) exportModal.classList.remove('active');
+    if (e.target == kioskQrModal) {
+        kioskQrModal.classList.remove('active');
+        kioskQrModal.style.display = 'none';
+    }
     if (e.target == loginModal && !adminApp.style.display) loginModal.style.display = 'none';
 };
 

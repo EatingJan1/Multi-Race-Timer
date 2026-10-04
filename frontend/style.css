@@ -952,65 +952,6 @@ tr.active-row td {
     animation: modalSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.login-modal {
-    z-index: 9999;
-    background: rgba(2, 6, 23, 0.86);
-    backdrop-filter: blur(12px);
-}
-
-.login-modal-card {
-    max-width: 430px;
-    border-radius: 22px;
-    border: 1px solid rgba(125, 211, 252, 0.26);
-    box-shadow: 0 28px 64px rgba(2, 6, 23, 0.48);
-}
-
-.login-modal-head {
-    text-align: center;
-    margin-bottom: 1.6rem;
-}
-
-.login-modal-head h1 {
-    margin-bottom: 0.45rem;
-    font-size: 1.7rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.login-modal-head h1 iconify-icon {
-    color: #7dd3fc;
-}
-
-.login-modal .form-input {
-    height: 44px;
-    border-radius: 12px;
-    background: rgba(15, 23, 42, 0.58);
-    border: 1px solid rgba(148, 163, 184, 0.32);
-}
-
-.login-modal .form-input:focus {
-    border-color: rgba(56, 189, 248, 0.72);
-    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
-}
-
-.login-error {
-    color: #fca5a5;
-    background: rgba(127, 29, 29, 0.32);
-    border: 1px solid rgba(248, 113, 113, 0.38);
-    padding: 0.6rem 0.75rem;
-    border-radius: 10px;
-    margin-bottom: 1rem;
-    display: none;
-    font-size: 0.88rem;
-}
-
-.login-modal-actions {
-    margin-top: 1rem;
-    flex-direction: column;
-    gap: 0.55rem;
-}
-
 @keyframes modalSlide {
     from {
         opacity: 0;
@@ -1548,47 +1489,31 @@ input:checked+.switch-slider:before {
 /* Form Designer Modal Styles */
 .designer-modal-content {
     max-width: 95vw !important;
-    width: 1280px !important;
+    width: 1200px !important;
     height: 90vh;
     display: flex;
     flex-direction: column;
     padding: 0 !important;
     overflow: hidden;
-    border-radius: 24px !important;
-    border: 1px solid rgba(125, 211, 252, 0.24);
-    box-shadow: 0 36px 90px rgba(2, 6, 23, 0.55);
 }
 
 .designer-header {
-    padding: 1rem 1.25rem;
+    padding: 1.5rem 2rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-    background: linear-gradient(120deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
-}
-
-.designer-header h2 {
-    font-size: 1.1rem;
-    letter-spacing: 0.01em;
-}
-
-.designer-actions {
-    display: flex;
-    gap: 0.55rem;
+    border-bottom: 1px solid var(--glass-border);
+    background: rgba(30, 41, 59, 0.5);
 }
 
 .designer-toolbar {
-    padding: 0.7rem 1rem;
-    background: rgba(15, 23, 42, 0.9);
+    padding: 0.75rem 2rem;
+    background: #1e293b;
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    gap: 1rem;
+    border-bottom: 1px solid var(--glass-border);
     flex-wrap: wrap;
-    position: sticky;
-    top: 0;
-    z-index: 4;
 }
 
 .toolbar-group {
@@ -1603,11 +1528,11 @@ input:checked+.switch-slider:before {
 }
 
 .tool-btn {
-    background: rgba(30, 41, 59, 0.86);
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
     padding: 8px;
-    border-radius: 10px;
+    border-radius: 8px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -1623,11 +1548,11 @@ input:checked+.switch-slider:before {
 }
 
 .toolbar-select {
-    background: rgba(30, 41, 59, 0.86);
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    color: #e2e8f0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
     padding: 5px;
-    border-radius: 10px;
+    border-radius: 6px;
     font-size: 12px;
     outline: none;
     cursor: pointer;
@@ -1669,14 +1594,12 @@ input:checked+.switch-slider:before {
 }
 
 .tool-btn:hover {
-    background: rgba(56, 189, 248, 0.18);
-    border-color: rgba(56, 189, 248, 0.45);
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 .tool-btn.active {
-    background: linear-gradient(120deg, #0ea5e9, #fb923c);
-    border-color: transparent;
-    color: #fff;
+    background: var(--primary);
 }
 
 .dropdown-container {
@@ -1739,11 +1662,8 @@ input:checked+.switch-slider:before {
 .designer-workspace {
     flex: 1;
     overflow-y: auto;
-    background:
-        radial-gradient(1000px 340px at 12% 10%, rgba(14, 165, 233, 0.16), transparent 68%),
-        radial-gradient(800px 300px at 86% 0%, rgba(249, 115, 22, 0.14), transparent 70%),
-        #0f172a;
-    padding: 30px 28px;
+    background: #0f172a;
+    padding: 40px;
     display: flex;
     justify-content: center;
 }
@@ -1754,8 +1674,7 @@ input:checked+.switch-slider:before {
     background: white;
     color: black;
     padding: 2.5cm;
-    border-radius: 6px;
-    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.48);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
     outline: none;
     position: relative;
     line-height: 1.5;
@@ -1800,8 +1719,8 @@ input:checked+.switch-slider:before {
     border: none !important;
 }
 
-.a4-page-designer .draggable-logo.selected-item,
-.a4-page-designer .form-signature-block.selected-item {
+.draggable-logo.selected-item,
+.form-signature-block.selected-item {
     outline: 2px solid var(--primary) !important;
     box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
 }
@@ -2789,50 +2708,51 @@ input:checked+.switch-slider:before {
 /* --- SETTINGS MODAL REDESIGN (TABBED) --- */
 .settings-modal-grid {
     display: grid !important;
-    grid-template-columns: 240px 1fr !important;
-    max-width: 950px !important;
+    grid-template-columns: 260px 1fr !important;
+    max-width: 1060px !important;
     width: 95% !important;
     padding: 0 !important;
-    height: 700px !important;
+    height: 740px !important;
     overflow: hidden !important;
-    border-radius: 32px !important;
-    border: 1px solid var(--glass-border);
+    border-radius: 24px !important;
+    border: 1px solid rgba(125, 211, 252, 0.2);
+    box-shadow: 0 34px 80px rgba(2, 6, 23, 0.5);
 }
 
 .settings-sidebar {
-    background: rgba(15, 23, 42, 0.6);
-    border-right: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 2.5rem 0;
+    background: linear-gradient(170deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.88));
+    border-right: 1px solid rgba(148, 163, 184, 0.18);
+    padding: 1.6rem 0.9rem;
     display: flex;
     flex-direction: column;
     backdrop-filter: blur(20px);
 }
 
 .settings-sidebar-header {
-    padding: 0 2rem 2.5rem;
+    padding: 0 0.8rem 1.2rem;
 }
 
 .settings-sidebar-header h2 {
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 0.11em;
     font-weight: 800;
-    color: var(--text-muted);
+    color: #7dd3fc;
 }
 
 .settings-tabs {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 0 1.25rem;
+    gap: 0.4rem;
+    padding: 0 0.2rem;
 }
 
 .tab-btn {
     appearance: none;
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
+    background: rgba(30, 41, 59, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    color: #cbd5e1;
     padding: 12px 1.25rem;
     text-align: left;
     font-size: 0.9rem;
@@ -2842,7 +2762,7 @@ input:checked+.switch-slider:before {
     align-items: center;
     gap: 12px;
     transition: all 0.25s ease;
-    border-radius: 14px;
+    border-radius: 12px;
 }
 
 .tab-btn .tab-icon {
@@ -2860,20 +2780,25 @@ input:checked+.switch-slider:before {
 }
 
 .tab-btn:hover {
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-main);
+    background: rgba(14, 165, 233, 0.16);
+    border-color: rgba(56, 189, 248, 0.4);
+    color: #f8fafc;
 }
 
 .tab-btn.active {
-    background: var(--primary);
+    background: linear-gradient(120deg, #0ea5e9, #2563eb);
+    border-color: transparent;
     color: white;
-    box-shadow: 0 8px 16px -4px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 10px 18px rgba(37, 99, 235, 0.32);
 }
 
 .settings-main {
-    padding: 3rem 4rem;
+    padding: 2rem 2.3rem;
     overflow-y: auto;
-    background: linear-gradient(165deg, var(--card-bg) 0%, var(--bg-dark) 100%);
+    background:
+        radial-gradient(900px 260px at 10% 0%, rgba(14, 165, 233, 0.1), transparent 68%),
+        radial-gradient(700px 240px at 90% 10%, rgba(249, 115, 22, 0.08), transparent 68%),
+        linear-gradient(165deg, rgba(15, 23, 42, 0.95) 0%, rgba(2, 6, 23, 0.95) 100%);
 }
 
 .tab-pane {
@@ -2898,13 +2823,15 @@ input:checked+.switch-slider:before {
 }
 
 .pane-header {
-    margin-bottom: 3rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
 }
 
 .pane-header h3 {
-    font-size: 2rem;
+    font-size: 1.45rem;
     font-weight: 800;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 }
 
 .user-list-toolbar {
@@ -3011,7 +2938,71 @@ input:checked+.switch-slider:before {
 }
 
 .settings-sidebar-footer {
-    padding: 2rem 1.25rem;
+    padding: 1rem 0.2rem 0.2rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+#tab-race .setting-item,
+#tab-registration .setting-item,
+#tab-layout .setting-item {
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 14px;
+    padding: 0.75rem 0.95rem;
+}
+
+#tab-registration>h3 {
+    margin-bottom: 1rem;
+}
+
+#tab-registration .setting-item label {
+    margin-bottom: 0.95rem;
+}
+
+#tab-registration .designer-promo-card {
+    margin-bottom: 1.2rem;
+}
+
+#tab-registration .divider {
+    margin: 1.35rem 0;
+}
+
+.kiosk-actions {
+    display: inline-flex;
+    gap: 0.55rem;
+    flex-wrap: wrap;
+}
+
+.kiosk-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.kiosk-qr-modal {
+    max-width: 460px;
+}
+
+.kiosk-qr-head h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.kiosk-qr-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+#kioskQrImage {
+    width: min(100%, 280px);
+    margin: 0 auto;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.26);
+    background: #fff;
+    padding: 0.55rem;
 }
 
 .danger-text {
