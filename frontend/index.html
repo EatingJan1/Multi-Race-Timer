@@ -24,9 +24,9 @@
         href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,100;0,300;0,400;0,700;0,900;1,100;1,300;1,400;1,700;1,900&family=Outfit:wght@100..900&family=Schibsted+Grotesk:ital,wght@0,400..900;1,400..900&display=swap"
         rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- New Libraries for PDF & Signature -->
+    <!-- Pin libraries for PDF & Signature -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js"></script>
     <script src="https://code.iconify.design/iconify-icon/1.0.8/iconify-icon.min.js"></script>
 </head>
@@ -46,7 +46,7 @@
             <p class="subtitle">Sie haben keine Berechtigung, die Daten dieses Rennens einzusehen oder zu bearbeiten.
             </p>
             <div style="margin-top:2rem;">
-                <button onclick="showLandingPage()" class="btn btn-primary">Zurück zum Portal</button>
+                <button id="noPermReturnBtn" class="btn btn-primary">Zurück zum Portal</button>
             </div>
         </div>
     </div>
@@ -216,7 +216,7 @@
                                 <iconify-icon icon="mdi:table-plus" width="16" height="16"></iconify-icon>
                                 Leere Tabelle erstellen
                             </a>
-                            <a href="#" onclick="document.getElementById('csvFile').click(); return false;">
+                            <a href="#" id="triggerCsvImportBtn">
                                 <iconify-icon icon="line-md:upload-loop" width="16" height="16"></iconify-icon>
                                 CSV/XLSX Import
                             </a>

@@ -1,4 +1,7 @@
-const API_ORIGIN = `${window.location.protocol}//${window.location.hostname}:5002`;
+const IS_DEV_PORT = window.location.port === '8000';
+const API_ORIGIN = (IS_DEV_PORT || window.location.port === '5002')
+    ? `${window.location.protocol}//${window.location.hostname}:5002`
+    : `${window.location.origin}/api`;
 const API_BASE = `${API_ORIGIN}/race`;
 const AUTH_BASE = `${API_ORIGIN}/auth`;
 const PUBLIC_BASE = `${API_ORIGIN}/public`;
@@ -1803,13 +1806,13 @@ function renderTable() {
             rowHtml += `
                 <td data-label="Aktionen">
                     <div class="edit-row-actions">
-                        <button class="btn-icon" onclick="event.stopPropagation(); downloadSignedPdf(${globalIndex})" title="PDF herunterladen">
+                        <button class="btn-icon btn-dl-pdf" title="PDF herunterladen">
                             <iconify-icon icon="mdi:file-eye-outline" aria-hidden="true"></iconify-icon>
                         </button>
-                        <button class="btn-icon" onclick="event.stopPropagation(); openEditModal(${globalIndex})" title="Bearbeiten">
+                        <button class="btn-icon btn-edit-part" title="Bearbeiten">
                             <iconify-icon icon="mdi:pencil-outline" aria-hidden="true"></iconify-icon>
                         </button>
-                        <button class="btn-icon danger-icon" onclick="event.stopPropagation(); deleteParticipant(${globalIndex})" title="Löschen">
+                        <button class="btn-icon danger-icon btn-del-part" title="Löschen">
                             <iconify-icon icon="mdi:trash-can-outline" aria-hidden="true"></iconify-icon>
                         </button>
                     </div>
@@ -1818,6 +1821,16 @@ function renderTable() {
         }
 
         row.innerHTML = rowHtml;
+
+        if (editMode && currentRace) {
+            const dlBtn = row.querySelector('.btn-dl-pdf');
+            if (dlBtn) dlBtn.addEventListener('click', (e) => { e.stopPropagation(); downloadSignedPdf(globalIndex); });
+            const editBtn = row.querySelector('.btn-edit-part');
+            if (editBtn) editBtn.addEventListener('click', (e) => { e.stopPropagation(); openEditModal(globalIndex); });
+            const delBtn = row.querySelector('.btn-del-part');
+            if (delBtn) delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteParticipant(globalIndex); });
+        }
+
         raceBody.appendChild(row);
     });
 
@@ -2340,7 +2353,7 @@ function prepareAndPrint() {
     }
 
     const printTable = document.getElementById('printTable');
-    printTable.innerHTML = `<thead><tr>${cols.map(c => `<th>${c.label}</th>`).join('')}</tr></thead><tbody id="printBody"></tbody>`;
+    printTable.innerHTML = `<thead><tr>${cols.map(c => `<th>${escapeHtml(c.label)}</th>`).join('')}</tr></thead><tbody id="printBody"></tbody>`;
     const pBody = document.getElementById('printBody');
 
     const winnerDuration = (sortBy !== 'mean' && list.length > 0) ? list[0].duration : null;
@@ -2350,11 +2363,11 @@ function prepareAndPrint() {
         row.innerHTML = cols.map(c => {
             if (c.key === 'rank') return `<td>${p.rank}.</td>`;
             if (c.key === 'number') return `<td>#${p.start_number}</td>`;
-            if (c.key === 'name') return `<td>${p.name}</td>`;
-            if (c.key === 'tags') return `<td>${p.tags ? p.tags.join(', ') : '-'}</td>`;
-            if (c.key === 'start') return `<td>${formatTime(p.start_time)}</td>`;
-            if (c.key === 'end') return `<td>${formatTime(p.end_time)}</td>`;
-            if (c.key === 'duration') return `<td>${p.duration.toFixed(3)}s</td>`;
+            if (c.key === 'name') return `<td>${escapeHtml(p.name)}</td>`;
+            if (c.key === 'tags') return `<td>${p.tags ? escapeHtml(p.tags.join(', ')) : '-'}</td>`;
+            if (c.key === 'start') return `<td>${p.start_time ? escapeHtml(formatTime(p.start_time)) : '-'}</td>`;
+            if (c.key === 'end') return `<td>${p.end_time ? escapeHtml(formatTime(p.end_time)) : '-'}</td>`;
+            if (c.key === 'duration') return `<td>${p.duration != null ? p.duration.toFixed(3) + 's' : '-'}</td>`;
             if (c.key === 'gap') {
                 if (sortBy === 'mean') {
                     const diff = p.duration - averageDuration;
@@ -3846,6 +3859,23 @@ if (createEmptyRaceBtn) {
 
 
 activeSection.addEventListener('click', handleMainAction);
+
+const noPermReturnBtn = document.getElementById('noPermReturnBtn');
+if (noPermReturnBtn) {
+    noPermReturnBtn.addEventListener('click', () => {
+        showLandingPage();
+    });
+}
+
+const triggerCsvImportBtn = document.getElementById('triggerCsvImportBtn');
+if (triggerCsvImportBtn) {
+    triggerCsvImportBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        isAppendMode = false;
+        if (csvFileInput) csvFileInput.click();
+    });
+}
+
 async function downloadSignedPdf(index) {
     const p = participants[index];
     if (!p || !currentRace) return;
@@ -3877,6 +3907,9 @@ async function downloadSignedPdf(index) {
 }
 
 window.downloadSignedPdf = downloadSignedPdf;
-
+window.openEditModal = openEditModal;
+window.deleteParticipant = deleteParticipant;
+window.showLandingPage = showLandingPage;
 
 init();
+
