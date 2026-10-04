@@ -12,21 +12,20 @@ Ein modernes, webbasiertes Zeitnehmungs-System für Sportveranstaltungen. Verwal
 - **Mehrere Rennen** gleichzeitig verwalten
 - **Echtzeit-Zeiterfassung** mit Start/Stop-Funktion (inkl. verzögertem Start mit Beep-Countdown)
 - **Online-Anmeldung** mit konfigurierbarem Formular (Drag & Drop Designer)
-- **Kiosk-Modus** für Selbst-Anmeldung vor Ort (Tablet-optimiert)
+- **Kiosk-Modus** für Selbst-Anmeldung vor Ort (Tablet-optimiert) mit sicherem Token-Zugriff
 - **Öffentliche Ergebnislisten** nach Rennabschluss
 - **Kategorien/Tags** für Teilnehmer (z.B. U18, PRO, Verein)
 - **Export** als PDF, Excel (.xlsx) und CSV
-- **Signierte PDFs** für Anmeldeformulare
-- **Responsive Design** – funktioniert auf Desktop, Tablet und Smartphone
-- **PWA-fähig** – kann als App auf dem Homescreen installiert werden
-- **Versionierung** über Git-Tags
+- **Signierte PDFs** für Anmeldeformulare mit Inhaltsvalidierung
+- **Responsive Design & PWA-fähig** – optimiert für Desktop, Tablet und Smartphone
+- **Rollen- & Rechtesystem** mit Manager- und Admin-Ebenen
 
 ---
 
 ## 🚀 Schnellstart (Lokal)
 
 ### Voraussetzungen
-- Python 3.8+
+- Python 3.10+
 - Git
 
 ### Installation
@@ -45,35 +44,37 @@ Die App ist dann erreichbar unter:
 - **Benutzer:** `admin` oder Wert aus `ADMIN_USER`
 - **Passwort:** Wert aus `ADMIN_PASS`
 
-> Wenn `ADMIN_PASS` nicht gesetzt ist, erzeugt das Backend beim ersten Start ein zufälliges Initialpasswort und schreibt es ins Log.
+> Wenn `ADMIN_PASS` nicht gesetzt ist, erzeugt das Backend beim ersten Start ein temporäres Initialpasswort und gibt dieses beim Start aus.
 
 ---
 
 ## 🐳 Docker (Empfohlen für Produktion)
 
 ```bash
-docker-compose up -d
+cp .env.example .env
+# Passe .env an (mindestens SECRET_KEY und ADMIN_PASS setzen!)
+docker compose up -d
 ```
 
-Das Frontend ist dann auf Port `80`, das Backend auf Port `5002` erreichbar.
+Das System ist nun über das Nginx-Frontend auf Port `80` erreichbar. Die API wird intern über `/api/` an das Backend weitergeleitet.
 
 ### Wichtige Produktions-Variablen
 
-Vor dem produktiven Einsatz sollten mindestens diese Werte gesetzt werden:
+Vor dem produktiven Einsatz sollten mindestens diese Werte in `.env` gesetzt werden:
 
 ```bash
-export SECRET_KEY='bitte-einen-langen-zufallswert-setzen'
-export ADMIN_USER='admin'
-export ADMIN_PASS='bitte-ein-starkes-passwort-setzen'
-export CORS_ALLOWED_ORIGINS='https://deine-domain.example'
-export SESSION_COOKIE_SECURE='true'
-docker-compose up -d
+SECRET_KEY=$(openssl rand -hex 32)
+ADMIN_USER=admin
+ADMIN_PASS=DeinSicheresAdminPasswort
+SESSION_COOKIE_SECURE=true
+CORS_ALLOWED_ORIGINS=https://deine-domain.example
 ```
 
 Sicherheitsrelevante Hinweise:
-- Passwörter werden ab V1.0 gehasht gespeichert; alte Klartext-Passwörter werden beim Laden automatisch migriert.
-- Benutzerdaten liegen in `./var/users.db` (SQLite) und werden per Docker-Volume persistent gehalten.
-- Offene CORS-Freigaben wurden entfernt. Bei zusätzlicher Domain oder LAN-Nutzung `CORS_ALLOWED_ORIGINS` explizit ergänzen.
+- In Produktion startet das Backend nicht ohne gesetzten `SECRET_KEY`.
+- Passwörter werden mit `scrypt`/`pbkdf2` sicher gehasht.
+- Nginx liefert Sicherheits-Header (CSP, HSTS, X-Frame-Options, X-Content-Type-Options) und fungiert als Reverse Proxy.
+- Anfragen und Logins sind durch integriertes Rate-Limiting gegen Brute-Force-Angriffe geschützt.
 
 ---
 
@@ -82,22 +83,24 @@ Sicherheitsrelevante Hinweise:
 ```
 Multi-Race-Timer/
 ├── backend/
-│   ├── app.py              # Flask REST API
-│   ├── requirements.txt    # Python-Abhängigkeiten
-│   └── Dockerfile
+│   ├── app.py              # Flask REST API & Security Layer
+│   ├── requirements.txt    # Gependelte Python-Abhängigkeiten
+│   └── Dockerfile          # Non-Root Image mit Gunicorn
 ├── frontend/
-│   ├── index.html          # Haupt-App
+│   ├── index.html          # Haupt-App & Landing Page
 │   ├── impressum.html      # Impressum (Österreich, ECG)
 │   ├── datenschutz.html    # Datenschutzerklärung (DSGVO)
 │   ├── app.js              # Frontend-Logik
-│   ├── footer-info.js      # Versionslader für alle Seiten
+│   ├── footer-info.js      # Versionslader
 │   ├── style.css           # Design-System
-│   ├── logo.png            # App-Logo (austauschbar)
+│   ├── nginx.conf          # Nginx Reverse Proxy & Security Headers
+│   ├── icons/              # App-Icons (PWA)
 │   └── manifest.json       # PWA-Manifest
 ├── data/                   # Renndaten (JSON) & Signaturen (PDF)
-├── docker-compose.yml
+├── var/                    # SQLite-Datenbank (users.db)
+├── docker-compose.yml      # Multi-Container Setup
 ├── start.sh                # Lokaler Startskript
-├── var/users.db            # Benutzer & Berechtigungen (SQLite)
+├── .env.example            # Konfigurations-Vorlage
 └── LICENSE                 # MIT License
 ```
 
