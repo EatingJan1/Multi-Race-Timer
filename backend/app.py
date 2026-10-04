@@ -340,9 +340,16 @@ def sanitize_person(person):
     duration = person.get('duration')
     if duration not in (None, ''):
         try:
-            clean_person['duration'] = float(duration)
+            clean_person['duration'] = round(float(duration), 3)
         except (TypeError, ValueError):
             abort(400, 'Invalid duration')
+    elif clean_person.get('start_time') and clean_person.get('end_time'):
+        try:
+            t0 = datetime.datetime.fromisoformat(clean_person['start_time'].replace('Z', '+00:00'))
+            t1 = datetime.datetime.fromisoformat(clean_person['end_time'].replace('Z', '+00:00'))
+            clean_person['duration'] = round(max(0.0, (t1 - t0).total_seconds()), 3)
+        except Exception:
+            clean_person['duration'] = None
     else:
         clean_person['duration'] = None
 
@@ -1427,17 +1434,26 @@ class StopPerson(Resource):
             timestamp = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
         found = False
+        duration = None
         for person in data['people']:
             if person['start_number'] == start_number:
                 if not person.get('start_time'):
                     abort(400, "Participant has not started yet")
                 person['end_time'] = timestamp
+                try:
+                    t0 = datetime.datetime.fromisoformat(person['start_time'].replace('Z', '+00:00'))
+                    t1 = datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    duration = round(max(0.0, (t1 - t0).total_seconds()), 3)
+                    person['duration'] = duration
+                except Exception as e:
+                    logger.warning(f"Could not calculate duration for #{start_number}: {e}")
+                    person['duration'] = None
                 found = True
                 break
         if not found:
             abort(404, "Start number not found")
         save_data(race_name, data)
-        return {'status': 'stopped', 'timestamp': timestamp}
+        return {'status': 'stopped', 'timestamp': timestamp, 'duration': duration}
 
 
 @ns.route('/<string:race_name>/delete')

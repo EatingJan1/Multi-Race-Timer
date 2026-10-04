@@ -242,12 +242,16 @@ async function updateAdminReleaseNotice() {
 
 
 function hasPermission(perm) {
-    const globalOnly = ['can_manage_users']; // can_manage_users is global. Others are race-contextual if selected.
-    const isGlobalAdmin = userPermissions.permissions && userPermissions.permissions.is_admin;
-    const canSeeAll = userPermissions.permissions && userPermissions.permissions.can_see_all;
+    const isRestriction = (perm === 'hide_ranking' || perm === 'hide_duration');
+    const isGlobalAdmin = !!(userPermissions.permissions && userPermissions.permissions.is_admin);
+    const canSeeAll = !!(userPermissions.permissions && userPermissions.permissions.can_see_all);
 
-    // Admin override
-    if (isGlobalAdmin) return true;
+    // Admin override: Admins have all capabilities, but restriction flags are NOT applied to them
+    if (isGlobalAdmin) {
+        return !isRestriction;
+    }
+
+    const globalOnly = ['can_manage_users']; // can_manage_users is global. Others are race-contextual if selected.
 
     // Priority 1: Global permission for global tasks
     if (globalOnly.includes(perm)) {
@@ -259,7 +263,7 @@ function hasPermission(perm) {
         // If canSeeAll is active, we have access to every race
         if (canSeeAll) {
             // Check for explicit override first
-            if (userPermissions.race_access && userPermissions.race_access[currentRace]) {
+            if (userPermissions.race_access && userPermissions.race_access[currentRace] && typeof userPermissions.race_access[currentRace][perm] !== 'undefined') {
                 return !!userPermissions.race_access[currentRace][perm];
             }
             // Fallback to global setting for this race
@@ -1710,20 +1714,22 @@ function renderTable() {
     }
 
     // 2. Pre-calculate Ranks based on duration
-    // Only calculate from timestamps if NO manual duration is set
-    displayList.filter(p => (!(p.duration > 0) && p.end_time)).forEach(p => {
-        const start = new Date(p.start_time);
-        const end = new Date(p.end_time);
-        p._calcDuration = (end - start) / 1000;
-        p.duration = p._calcDuration;
+    // Calculate from timestamps if NO manual duration is set
+    displayList.forEach(p => {
+        if (!(p.duration > 0) && p.start_time && p.end_time) {
+            const start = new Date(p.start_time).getTime();
+            const end = new Date(p.end_time).getTime();
+            if (!isNaN(start) && !isNaN(end) && end >= start) {
+                p.duration = Math.round(end - start) / 1000;
+            }
+        }
     });
 
     const finishedFiltered = displayList
-        .filter(p => p.duration > 0)
+        .filter(p => typeof p.duration === 'number' && p.duration > 0 && !isNaN(p.duration))
         .sort((a, b) => a.duration - b.duration);
 
     finishedFiltered.forEach((p, i) => {
-
         if (i > 0 && p.duration === finishedFiltered[i - 1].duration) {
             p.rank = finishedFiltered[i - 1].rank;
         } else {
@@ -1748,34 +1754,33 @@ function renderTable() {
         let diffDisplay = '-';
         let diffClass = 'diff-col';
 
+        const hasValidDuration = typeof p.duration === 'number' && p.duration > 0 && !isNaN(p.duration);
 
-
-        if (p.start_time && !p.end_time && !(p.duration > 0)) {
+        if (p.start_time && !p.end_time && !hasValidDuration) {
             status = 'Läuft';
             badgeClass = 'status-running';
             durationDisplay = `<span class="row-live-timer" data-start="${p.start_time}">-</span>`;
-        } else if (p.duration > 0) {
+        } else if (hasValidDuration || (p.start_time && p.end_time)) {
             status = 'Fertig';
             badgeClass = 'status-finished';
-            durationDisplay = p.duration.toFixed(3) + 's';
+            const dur = hasValidDuration
+                ? p.duration
+                : ((new Date(p.end_time).getTime() - new Date(p.start_time).getTime()) / 1000);
 
-            const rank = p.rank;
-            rankDisplay = rank + '.';
+            durationDisplay = (dur >= 0 ? dur.toFixed(3) : '0.000') + 's';
 
-            if (winnerDuration && p.duration === winnerDuration) {
+            if (p.rank && p.rank !== '-') {
+                rankDisplay = p.rank + '.';
+            }
+
+            if (winnerDuration != null && dur === winnerDuration) {
                 diffDisplay = 'Bestzeit';
                 diffClass = 'best-time';
-            } else if (winnerDuration && p.duration > winnerDuration) {
-                const diff = p.duration - winnerDuration;
+            } else if (winnerDuration != null && dur > winnerDuration) {
+                const diff = dur - winnerDuration;
                 diffDisplay = `+${diff.toFixed(3)}s`;
                 diffClass = 'diff-col';
             }
-        } else if (p.end_time) {
-            // Fallback: timestamps exist but no duration calculated yet
-            status = 'Fertig';
-            badgeClass = 'status-finished';
-            const calcD = (new Date(p.end_time) - new Date(p.start_time)) / 1000;
-            durationDisplay = calcD.toFixed(3) + 's';
         }
 
         if (!editMode) {
