@@ -3,10 +3,10 @@ sanitize.py – Input-Validierung und -Bereinigung.
 """
 import datetime
 import json
-
-from flask import abort, request
+import os
 
 from config import (
+    abort,
     MAX_JSON_NAME_LENGTH,
     MAX_TAG_LENGTH,
     MAX_TAGS_PER_PERSON,
@@ -17,15 +17,6 @@ from config import (
 # ---------------------------------------------------------------------------
 # Primitives
 # ---------------------------------------------------------------------------
-
-def get_json_body():
-    data = request.get_json(silent=True)
-    if data is None:
-        abort(400, 'Expected JSON body')
-    if not isinstance(data, dict):
-        abort(400, 'JSON body must be an object')
-    return data
-
 
 def sanitize_race_name(race_name):
     if not isinstance(race_name, str):
@@ -206,8 +197,6 @@ def sanitize_pdf_filename(start_number, name):
 # ---------------------------------------------------------------------------
 # Path traversal guard
 # ---------------------------------------------------------------------------
-
-import os
 
 def safe_join_under(base_dir, *parts):
     base_dir = os.path.abspath(base_dir)

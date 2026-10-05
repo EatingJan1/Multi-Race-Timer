@@ -1,7 +1,6 @@
 """
-config.py – Zentrale Konfiguration und Flask-App-Initialisierung.
+config.py – Zentrale Konfiguration (FastAPI-Version, ohne Flask-App-Instanz).
 """
-import datetime
 import logging
 import os
 import re
@@ -10,16 +9,23 @@ import subprocess
 import sys
 import urllib.error
 import urllib.request
-from functools import wraps
 
-from flask import Flask, abort
-from flask_restx import Api
+from fastapi import HTTPException
 
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
 )
 logger = logging.getLogger('zeit_backend')
+
+# ---------------------------------------------------------------------------
+# HTTP error helper (Ersatz für flask.abort)
+# ---------------------------------------------------------------------------
+
+def abort(status_code, description=''):
+    """Wirft eine HTTPException. Wird in app.py zu {"message": description} serialisiert."""
+    raise HTTPException(status_code=status_code, detail=description)
+
 
 # ---------------------------------------------------------------------------
 # Env helpers
@@ -80,20 +86,18 @@ def get_secret_key():
 
 
 # ---------------------------------------------------------------------------
-# Flask App
+# App settings (früher Flask-Config)
 # ---------------------------------------------------------------------------
 
-app = Flask(__name__)
-
 ALLOWED_ORIGINS = load_allowed_origins()
-app.secret_key = get_secret_key()
-app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_CONTENT_LENGTH', 12 * 1024 * 1024))
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax')
-app.config['SESSION_COOKIE_SECURE'] = env_flag('SESSION_COOKIE_SECURE', False)
-app.config['PERMANENT_SESSION_LIFETIME'] = datetime.timedelta(
-    hours=int(os.environ.get('SESSION_TTL_HOURS', '12'))
-)
+SECRET_KEY = get_secret_key()
+MAX_CONTENT_LENGTH = int(os.environ.get('MAX_CONTENT_LENGTH', 12 * 1024 * 1024))
+SESSION_COOKIE_SAMESITE = os.environ.get('SESSION_COOKIE_SAMESITE', 'Lax').strip().lower()
+SESSION_COOKIE_SECURE = env_flag('SESSION_COOKIE_SECURE', False)
+SESSION_TTL_SECONDS = int(os.environ.get('SESSION_TTL_HOURS', '12')) * 3600
+# Nur auf True setzen, wenn genau EIN vertrauenswürdiger Reverse-Proxy (z. B. nginx)
+# vor dem Backend steht, der X-Forwarded-For anhängt.
+TRUST_PROXY_HEADERS = env_flag('TRUST_PROXY_HEADERS', False)
 
 # ---------------------------------------------------------------------------
 # Path & limit constants

@@ -1,180 +1,262 @@
 """
-security.py – Rate Limiter, CORS-Header, Decorators.
+security.py – Auth-Dependencies, Rate-Limiter und Middlewares (FastAPI-Version).
+
+HINWEIS: Diese Datei wurde aus dem Verhalten der alten Flask-Decorators
+(login_required / admin_required / permission_required) nachgebaut, weil die
+originale security.py nicht vorlag. Bitte die Rechte-Logik in
+`permission_required` mit deiner Version abgleichen.
 """
+import secrets
 import threading
 import time
 from collections import defaultdict, deque
-from functools import wraps
+from dataclasses import dataclass
 
-from flask import abort, request, session
+from fastapi import Depends, Request
+from fastapi.responses import JSONResponse
+from starlette.datastructures import MutableHeaders
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from config import ALLOWED_ORIGINS, logger
-
-
-# ---------------------------------------------------------------------------
-# Client IP
-# ---------------------------------------------------------------------------
-
-def get_client_ip():
-    if request.headers.get('X-Forwarded-For'):
-        return request.headers['X-Forwarded-For'].split(',')[0].strip()
-    return request.remote_addr or 'unknown'
+from config import TRUST_PROXY_HEADERS, abort
+from db.users import load_users
 
 
 # ---------------------------------------------------------------------------
-# CORS / Security Headers
+# Hilfsfunktionen
 # ---------------------------------------------------------------------------
 
-def is_allowed_origin(origin):
-    if not origin:
+def constant_time_equals(a, b):
+    """Zeitkonstanter String-Vergleich, der auch mit Nicht-ASCII-Zeichen funktioniert."""
+    if not isinstance(a, str) or not isinstance(b, str):
         return False
-    return origin in ALLOWED_ORIGINS
+    return secrets.compare_digest(a.encode('utf-8'), b.encode('utf-8'))
 
 
-def add_security_and_cors_headers(response):
-    origin = request.headers.get('Origin')
-    if is_allowed_origin(origin):
-        response.headers['Access-Control-Allow-Origin'] = origin
-        response.headers['Access-Control-Allow-Credentials'] = 'true'
-        response.headers['Vary'] = 'Origin'
-
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
-    response.headers['Access-Control-Allow-Methods'] = 'GET,PUT,POST,DELETE,OPTIONS'
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-Frame-Options'] = 'DENY'
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
-    return response
+def get_client_ip(request: Request) -> str:
+    """
+    Client-IP. X-Forwarded-For wird nur beachtet, wenn TRUST_PROXY_HEADERS=true
+    (genau ein vertrauenswürdiger Proxy davor). Dann zählt der LETZTE Eintrag,
+    also der, den unser Proxy angehängt hat – vorherige Einträge sind fälschbar.
+    """
+    if TRUST_PROXY_HEADERS:
+        forwarded = request.headers.get('x-forwarded-for')
+        if forwarded:
+            last = forwarded.split(',')[-1].strip()
+            if last:
+                return last
+    return request.client.host if request.client else 'unknown'
 
 
 # ---------------------------------------------------------------------------
-# Rate Limiter
+# Rate Limiter (in-memory, pro Prozess)
 # ---------------------------------------------------------------------------
 
-class MemoryRateLimiter:
+class RateLimiter:
+    _RETENTION_SECONDS = 3600
+    _GC_EVERY = 500
+
     def __init__(self):
-        self._requests = defaultdict(deque)
         self._lock = threading.Lock()
+        self._hits = defaultdict(deque)
+        self._failures = defaultdict(deque)
+        self._calls = 0
 
-    def is_allowed(self, key: str, max_requests: int, window_seconds: int) -> bool:
-        now = time.time()
+    def _gc(self, now):
+        cutoff = now - self._RETENTION_SECONDS
+        for store in (self._hits, self._failures):
+            for key in [k for k, q in store.items() if not q or q[-1] <= cutoff]:
+                del store[key]
+
+    def is_allowed(self, key, max_requests, window_seconds):
+        now = time.monotonic()
         with self._lock:
-            dq = self._requests[key]
-            while dq and dq[0] <= now - window_seconds:
-                dq.popleft()
-            if len(dq) >= max_requests:
+            self._calls += 1
+            if self._calls % self._GC_EVERY == 0:
+                self._gc(now)
+            q = self._hits[key]
+            cutoff = now - window_seconds
+            while q and q[0] <= cutoff:
+                q.popleft()
+            if len(q) >= max_requests:
                 return False
-            dq.append(now)
+            q.append(now)
             return True
 
-    def record_failure(self, key: str):
-        now = time.time()
+    def record_failure(self, key):
         with self._lock:
-            self._requests[f"fail:{key}"].append(now)
+            self._failures[key].append(time.monotonic())
 
-    def is_locked_out(self, key: str, max_failures: int = 5, window_seconds: int = 300) -> bool:
-        now = time.time()
+    def is_locked_out(self, key, max_failures, window_seconds):
+        now = time.monotonic()
         with self._lock:
-            dq = self._requests[f"fail:{key}"]
-            while dq and dq[0] <= now - window_seconds:
-                dq.popleft()
-            return len(dq) >= max_failures
+            q = self._failures.get(key)
+            if not q:
+                return False
+            cutoff = now - window_seconds
+            while q and q[0] <= cutoff:
+                q.popleft()
+            return len(q) >= max_failures
 
-    def reset_failures(self, key: str):
+    def reset_failures(self, key):
         with self._lock:
-            self._requests.pop(f"fail:{key}", None)
+            self._failures.pop(key, None)
 
 
-rate_limiter = MemoryRateLimiter()
+rate_limiter = RateLimiter()
 
 
 # ---------------------------------------------------------------------------
-# Auth Decorators
+# Aktueller Benutzer + Rechte-Dependencies
 # ---------------------------------------------------------------------------
 
-def _get_current_user_impl():
-    """Internal – avoids circular imports by importing db.users lazily."""
-    if not session.get('logged_in'):
-        return None, None
-    username = session.get('user')
+@dataclass
+class CurrentUser:
+    username: str
+    data: dict
+
+    @property
+    def permissions(self) -> dict:
+        return self.data.get('permissions', {}) or {}
+
+    @property
+    def race_access(self) -> dict:
+        return self.data.get('race_access', {}) or {}
+
+    @property
+    def is_admin(self) -> bool:
+        return bool(self.permissions.get('is_admin'))
+
+
+def optional_user(request: Request):
+    """Frischer Lookup des eingeloggten Benutzers (None, wenn nicht eingeloggt)."""
+    if not request.session.get('logged_in'):
+        return None
+    username = request.session.get('user')
     if not username:
-        session.clear()
-        return None, None
-    from db.users import load_users
-    users = load_users()
-    if username not in users:
-        session.clear()
-        return None, None
-    return username, users[username]
+        return None
+    user_data = load_users().get(username)
+    if not user_data:
+        # Benutzer wurde gelöscht -> Session ungültig machen
+        request.session.clear()
+        return None
+    return CurrentUser(username=username, data=user_data)
 
 
-def get_current_user():
-    return _get_current_user_impl()
+def login_required(request: Request) -> CurrentUser:
+    user = optional_user(request)
+    if user is None:
+        abort(401, 'Authentication required')
+    return user
 
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        username, _ = get_current_user()
-        if not username:
-            return {'message': 'Authentication required'}, 401
-        return f(*args, **kwargs)
-    return decorated_function
+def admin_required(user: CurrentUser = Depends(login_required)) -> CurrentUser:
+    if not user.is_admin:
+        abort(403, 'Admin permission required')
+    return user
 
 
-def admin_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        username, user_data = get_current_user()
-        if not username:
-            return {'message': 'Authentication required'}, 401
-        permissions = user_data.get('permissions', {})
-        if not permissions.get('is_admin'):
-            return {'message': 'Admin permission required'}, 403
-        return f(*args, **kwargs)
-    return decorated_function
-
-
-def permission_required(perm):
+def permission_required(perm: str):
     """
-    Decorator: checks specific permission.
-    Admins always pass; race-contextual perms checked per race_name kwarg.
+    Dependency-Factory. Admins dürfen alles. Mit `race_name` im Pfad wird
+    rennspezifisch geprüft (race_access), sonst global.
     """
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            from sanitize import sanitize_race_name
-            username, user_data = get_current_user()
-            if not username:
-                return {'message': 'Authentication required'}, 401
+    def dependency(request: Request, user: CurrentUser = Depends(login_required)) -> CurrentUser:
+        if user.is_admin:
+            return user
 
-            permissions = user_data.get('permissions', {})
-            if permissions.get('is_admin'):
-                return f(*args, **kwargs)
+        permissions = user.permissions
+        race_access = user.race_access
+        race_name = request.path_params.get('race_name')
 
-            race_access = user_data.get('race_access', {})
-            race_name = kwargs.get('race_name')
-
-            if race_name:
-                safe_rname = sanitize_race_name(race_name)
-                if permissions.get('can_see_all'):
-                    if safe_rname in race_access:
-                        race_perms = race_access[safe_rname]
-                        if not race_perms.get(perm):
-                            return {'message': f"Permission denied for race {safe_rname} (Override): {perm}"}, 403
-                    else:
-                        if not permissions.get(perm):
-                            return {'message': f"Global permission denied for race {safe_rname}: {perm}"}, 403
-                else:
-                    if safe_rname not in race_access:
-                        return {'message': f"No access to race: {safe_rname}"}, 403
-                    race_perms = race_access[safe_rname]
-                    if not race_perms.get(perm):
-                        return {'message': f"Permission denied for race {safe_rname}: {perm}"}, 403
+        if race_name:
+            if permissions.get('can_see_all'):
+                if race_name in race_access:
+                    if not race_access[race_name].get(perm):
+                        abort(403, f"Permission denied for race {race_name} (Override): {perm}")
+                elif not permissions.get(perm):
+                    abort(403, f"Global permission denied for race {race_name}: {perm}")
             else:
-                if not permissions.get(perm):
-                    return {'message': f"Global permission denied: {perm}"}, 403
+                if race_name not in race_access:
+                    abort(403, f"No access to race: {race_name}")
+                if not race_access[race_name].get(perm):
+                    abort(403, f"Permission denied for race {race_name}: {perm}")
+        elif not permissions.get(perm):
+            abort(403, f"Global permission denied: {perm}")
 
-            return f(*args, **kwargs)
-        return decorated_function
-    return decorator
+        return user
+
+    return dependency
+
+
+# ---------------------------------------------------------------------------
+# Middlewares (reine ASGI-Middlewares)
+# ---------------------------------------------------------------------------
+
+class SecurityHeadersMiddleware:
+    HEADERS = {
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+    }
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] != 'http':
+            await self.app(scope, receive, send)
+            return
+
+        async def send_with_headers(message):
+            if message['type'] == 'http.response.start':
+                headers = MutableHeaders(scope=message)
+                for name, value in self.HEADERS.items():
+                    headers[name] = value
+            await send(message)
+
+        await self.app(scope, receive, send_with_headers)
+
+
+class _BodyTooLarge(StarletteHTTPException):
+    def __init__(self):
+        super().__init__(status_code=413, detail='Request body too large')
+
+
+class BodySizeLimitMiddleware:
+    """Ersatz für Flasks MAX_CONTENT_LENGTH (prüft Content-Length und gestreamte Bodies)."""
+
+    def __init__(self, app, max_bytes: int):
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] != 'http':
+            await self.app(scope, receive, send)
+            return
+
+        content_length = dict(scope['headers']).get(b'content-length')
+        if content_length is not None:
+            try:
+                too_large = int(content_length) > self.max_bytes
+            except ValueError:
+                response = JSONResponse({'message': 'Invalid Content-Length'}, status_code=400)
+                await response(scope, receive, send)
+                return
+            if too_large:
+                response = JSONResponse({'message': 'Request body too large'}, status_code=413)
+                await response(scope, receive, send)
+                return
+
+        received = 0
+
+        async def limited_receive():
+            nonlocal received
+            message = await receive()
+            if message['type'] == 'http.request':
+                received += len(message.get('body', b''))
+                if received > self.max_bytes:
+                    raise _BodyTooLarge()
+            return message
+
+        await self.app(scope, limited_receive, send)
