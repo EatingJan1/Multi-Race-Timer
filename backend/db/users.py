@@ -16,7 +16,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 # ---------------------------------------------------------------------------
 
 def normalize_username(username):
-    from flask import abort
+    from config import abort
     if not isinstance(username, str):
         abort(400, 'Username required')
     username = username.strip()
@@ -28,7 +28,7 @@ def normalize_username(username):
 
 
 def validate_password(password, min_len=8):
-    from flask import abort
+    from config import abort
     if not isinstance(password, str) or len(password) < min_len:
         abort(400, f'Password must be at least {min_len} characters long')
     return password

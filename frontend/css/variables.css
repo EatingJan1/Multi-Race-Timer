@@ -1,0 +1,22 @@
+:root {
+    --bg-dark: #0f172a;
+    --card-bg: #1e1b4b;
+    /* Deep Indigo for the premium glass feel */
+    --primary: #6366f1;
+    --accent-blue: #3b82f6;
+    --accent-green: #22c55e;
+    --accent-red: #ef4444;
+    --accent-orange: #f59e0b;
+    --text-main: #f8fafc;
+    --text-muted: #94a3b8;
+    --card-border: rgba(255, 255, 255, 0.08);
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --color-success: var(--accent-green);
+    --color-danger: var(--accent-red);
+    --color-warning: var(--accent-orange);
+    --color-info: var(--accent-blue);
+    --surface-soft: rgba(255, 255, 255, 0.05);
+    --surface-strong: rgba(255, 255, 255, 0.1);
+}
+

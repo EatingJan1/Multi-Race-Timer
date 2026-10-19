@@ -1,0 +1,376 @@
+/* --- MINIMALIST CONTROL BAR (SINGLE LINE) WITH PREMIUM BACKGROUND --- */
+.control-bar {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 2.5rem;
+    background: rgba(30, 27, 75, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+.control-group-left,
+.control-group-right {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 1rem;
+    flex-wrap: nowrap !important;
+}
+
+.action-buttons {
+    display: flex !important;
+    flex-direction: row !important;
+    gap: 0.5rem;
+    flex-wrap: nowrap !important;
+}
+
+.session-select {
+    background: transparent;
+    border: px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    color: var(--text-main);
+    padding: 0 0.75rem;
+    height: 34px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    outline: none;
+    transition: all 0.2s;
+    min-width: 160px;
+    cursor: pointer;
+}
+
+.session-select:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.session-select:focus {
+    border-color: var(--primary);
+}
+
+.btn-icon,
+.import-btn {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: var(--text-main);
+    height: 34px;
+    padding: 0 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    font-family: inherit;
+}
+
+iconify-icon {
+    color: currentColor;
+    vertical-align: middle;
+    display: inline-block;
+}
+
+.btn-icon iconify-icon,
+.import-btn iconify-icon,
+.edit-row-actions .btn-icon iconify-icon {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.edit-row-actions {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+}
+
+.edit-row-actions .btn-icon {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-icon:hover,
+.import-btn:hover,
+.edit-row-actions .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+    opacity: 1;
+}
+
+.footer-content {
+
+    flex-direction: row;
+    display: flex;
+    flex-wrap: wrap;
+    /* Erlaubt Umbruch auf sehr schmalen Handys */
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+}
+
+.footer-content a {
+
+    color: inherit;
+    text-decoration: none;
+    opacity: 0.8;
+    transition: all 0.2s;
+}
+
+.footer-content a:hover {
+    opacity: 1;
+    color: var(--primary);
+}
+
+/* Optional: Die WIKI-Zeile etwas dezenter oder kleiner machen */
+.footer-links {
+    opacity: 0.7;
+    font-size: 0.8rem;
+}
+
+#appVersion {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 500;
+    border: 1px solid var(--glass-border);
+}
+
+.admin-release-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.35);
+    color: #c7d2fe;
+    font-weight: 500;
+}
+
+.admin-release-note a {
+    color: #e0e7ff;
+    text-decoration: underline;
+    opacity: 0.95;
+}
+
+.admin-release-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.admin-release-update-btn {
+    border: 1px solid rgba(224, 231, 255, 0.6);
+    background: rgba(224, 231, 255, 0.12);
+    color: #e0e7ff;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.admin-release-update-btn:hover {
+    background: rgba(224, 231, 255, 0.2);
+}
+
+.admin-release-update-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 0.5rem;
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    h1 {
+        font-size: 1.75rem;
+        margin-top: 0.5rem;
+    }
+
+    /* Force show desktop-only elements, but style them for mobile grid */
+    .desktop-only {
+        display: block !important;
+    }
+
+    /* Mobile Header & Control Bar - Stacked & Scrollable */
+    .control-bar {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+        border-radius: 16px;
+        margin-bottom: 1.5rem;
+    }
+
+    .landing-content {
+        padding: 1.2rem 0.85rem 0;
+    }
+
+    .hero-section {
+        padding: 2.5rem 0.85rem 2.8rem;
+        border-radius: 20px;
+    }
+
+    .glass-nav {
+        padding: 0.75rem 0.9rem;
+        margin-bottom: 1rem;
+    }
+
+    .hero-kicker {
+        font-size: 0.72rem;
+    }
+
+    .hero-subtitle {
+        font-size: 0.98rem;
+    }
+
+    .hero-chip {
+        font-size: 0.74rem;
+    }
+
+    .race-grid-section h2 {
+        font-size: 1.16rem;
+    }
+
+    .race-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .race-card {
+        min-height: 190px;
+        padding: 1.1rem;
+    }
+
+    #rankingMethodContainer {
+        display: flex !important;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .public-controls {
+        margin: -1rem auto 1.5rem auto !important;
+        padding: 0 1rem !important;
+        gap: 0.75rem !important;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .public-control-item {
+        height: 54px !important;
+        width: 100% !important;
+    }
+
+    #rankingMethodContainer.public-control-item {
+        justify-content: space-between;
+        padding: 0 1.25rem !important;
+    }
+
+    .control-group-left,
+    .control-group-right {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100%;
+        gap: 0.75rem;
+        align-items: stretch !important;
+    }
+
+    .session-select,
+    #tagFilter {
+        width: 100%;
+        height: 48px;
+        /* Touch friendly */
+        font-size: 1rem;
+    }
+
+    .action-buttons {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        width: 100%;
+    }
+
+    .action-buttons .btn-icon {
+        width: 100% !important;
+        height: 48px;
+        justify-content: center;
+    }
+
+    .divider {
+        display: none;
+    }
+
+    /* Import & Settings Row */
+    .control-group-right {
+        flex-direction: row !important;
+        /* Keep buttons side-by-side */
+        justify-content: space-between;
+        margin-top: 0.5rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 1rem;
+    }
+
+    .import-section {
+        flex-grow: 1;
+        margin-right: 0.75rem;
+    }
+
+    .import-btn {
+        width: 100%;
+        height: 48px;
+        justify-content: center;
+    }
+
+    #settingsBtn {
+        height: 48px;
+        width: 48px !important;
+        flex-shrink: 0;
+    }
+
+    /* Active Person Card - Sticky & Prominent */
+    .active-person-card {
+        top: 0.5rem;
+        margin: 0 -0.5rem 1.5rem -0.5rem;
+        /* Full width feel */
+        border-radius: 16px;
+        padding: 1rem;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+    }
+
+    .timer-display {
+        font-size: 3.5rem;
+        line-height: 1;
+        margin: 0.5rem 0;
+    }
+
+    .person-name {
+        font-size: 1.25rem;
+    }
+
+    .btn-start {
+        height: 60px;
+        font-size: 1.1rem;
+        letter-spacing: 0.5px;
+        font-weight: 800;
+    }
+

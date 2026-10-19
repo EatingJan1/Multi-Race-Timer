@@ -29,23 +29,43 @@ if [ -n "$PIDS" ]; then
     fi
 fi
 
-# Set up virtual environment
+# uv wird für venv und Abhängigkeiten benötigt
+if ! command -v uv >/dev/null 2>&1; then
+    echo "❌ 'uv' wurde nicht gefunden. Installation:"
+    echo "   curl -LsSf https://astral.sh/uv/install.sh | sh   (oder: brew install uv)"
+    exit 1
+fi
+
+# Python-Version, die das Projekt nutzt (passt zum Docker-Image python:3.14)
+PYTHON_VERSION="3.14"
+
+# Vorhandenes venv mit anderer Python-Version neu anlegen
+if [ -d "venv" ]; then
+    CURRENT_PY=$(venv/bin/python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null || echo "unbekannt")
+    if [ "$CURRENT_PY" != "$PYTHON_VERSION" ]; then
+        echo "♻️  venv nutzt Python $CURRENT_PY, benötigt wird $PYTHON_VERSION – erstelle venv neu..."
+        rm -rf venv
+    fi
+fi
+
+# Set up virtual environment (uv lädt Python $PYTHON_VERSION bei Bedarf automatisch herunter)
 if [ ! -d "venv" ]; then
-    echo "📦 Erstelle virtuelles Environment (venv)..."
-    python3 -m venv venv
+    echo "📦 Erstelle virtuelles Environment (venv, Python $PYTHON_VERSION)..."
+    uv venv venv --python "$PYTHON_VERSION" --quiet
 fi
 
 echo "📦 Aktiviere venv und prüfe Abhängigkeiten..."
 source venv/bin/activate
-pip install -r backend/requirements.txt --quiet
+uv pip install -r backend/requirements.txt --quiet
 
 # Development defaults
-export FLASK_ENV=development
-export FLASK_DEBUG=1
+export ENV=development
 export PORT=5002
 
 echo "🚀 Starte Backend auf http://localhost:5002..."
-python3 backend/app.py &
+# Arbeitsverzeichnis bleibt der Repo-Root, damit data/ und var/ am bisherigen Ort liegen.
+uvicorn --app-dir backend app:app --host 0.0.0.0 --port "$PORT" \
+    --reload --reload-dir backend --no-proxy-headers &
 BACKEND_PID=$!
 
 echo "🌐 Starte Frontend auf http://localhost:8000..."

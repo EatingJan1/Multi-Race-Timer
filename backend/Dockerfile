@@ -1,10 +1,18 @@
 FROM python:3.14-slim
 
+# uv (schneller pip-Ersatz) aus dem offiziellen Image, Version gepinnt
+COPY --from=ghcr.io/astral-sh/uv:0.12.23 /uv /uvx /bin/
+
+# UV_COMPILE_BYTECODE: schnellerer Container-Start; UV_LINK_MODE=copy: nötig bei Cache-Mount
+ENV UV_COMPILE_BYTECODE=1 \
+    UV_LINK_MODE=copy
+
 WORKDIR /app
 
-# Abhängigkeiten
+# Abhängigkeiten (Cache-Mount: wiederholte Builds laden nichts neu)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv pip install --system -r requirements.txt
 
 # Anwendungscode
 COPY app.py config.py sanitize.py security.py ./

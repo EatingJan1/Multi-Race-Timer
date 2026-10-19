@@ -1,0 +1,151 @@
+/* --- NEW EXPORT & PRINT LOGIC --- */
+
+/* PRINT VIEW RESET (Non-Print Mode) */
+.print-only {
+    display: none !important;
+}
+
+@media print {
+
+    /* Set page to landscape */
+    @page {
+        size: landscape;
+        margin: 0;
+    }
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box !important;
+    }
+
+    body {
+        background: white !important;
+        color: black !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .print-only {
+        display: block !important;
+        width: 100% !important;
+        visibility: visible !important;
+        padding: 1.5cm !important;
+    }
+
+    /* Hide UI Elements */
+    .container,
+    .modal,
+    .card,
+    #activeSection,
+    .control-bar,
+    header,
+    .no-print {
+        display: none !important;
+    }
+
+    /* Professional Print Header */
+    .print-header {
+        display: flex !important;
+        justify-content: flex-start !important;
+        align-items: center !important;
+        border-bottom: 3px solid #000 !important;
+        padding-bottom: 15px !important;
+        margin-bottom: 25px !important;
+    }
+
+    #printLogo {
+        max-height: 150px !important;
+        max-width: 150px !important;
+        object-fit: contain !important;
+        margin-right: 20px !important;
+    }
+
+    .print-titles {
+        text-align: left !important;
+    }
+
+    .print-titles h1 {
+        margin: 0 !important;
+        font-size: 28pt !important;
+        color: #000 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        background: none !important;
+        -webkit-text-fill-color: initial !important;
+        background-clip: unset !important;
+    }
+
+    .print-titles p {
+        margin: 5px 0 0 0 !important;
+        font-size: 14pt !important;
+        color: #444 !important;
+        font-weight: 600 !important;
+    }
+
+    /* Professional Print Table */
+    table#printTable {
+        width: 99% !important;
+        /* Slightly smaller to prevent edge clipping */
+        border-collapse: collapse !important;
+        border: 1px solid #000 !important;
+        margin: 0 auto !important;
+        table-layout: auto !important;
+        font-family: 'Outfit', sans-serif !important;
+    }
+
+    table#printTable th,
+    table#printTable td {
+        border: 1px solid #000 !important;
+        padding: 12px 10px !important;
+    }
+
+    /* Force the left-most border to be visible */
+    table#printTable th:first-child,
+    table#printTable td:first-child {
+        border-left: 2px solid #000 !important;
+    }
+
+    table#printTable th {
+        background-color: #f2f2f2 !important;
+        color: black !important;
+        text-align: left !important;
+        font-weight: 800 !important;
+        font-size: 11pt !important;
+        text-transform: uppercase !important;
+    }
+
+    table#printTable td {
+        /* Pure black for visibility */
+        font-size: 11pt !important;
+        color: black !important;
+    }
+
+    /* Zebra Striping for better readability in landscape */
+    table#printTable tr:nth-child(even) td {
+        background-color: #fafafa !important;
+    }
+
+    /* Highlighting certain columns */
+    table#printTable td:first-child {
+        font-weight: 900 !important;
+        font-size: 13pt !important;
+        width: 50px !important;
+    }
+
+    table#printTable td:nth-child(2) {
+        font-weight: 600 !important;
+    }
+
+    /* Duration and Gap emphasizing */
+    table#printTable td:nth-child(6),
+    table#printTable td:nth-child(7) {
+        font-family: monospace !important;
+        font-weight: 800 !important;
+        text-align: right !important;
+    }
+
+}
+

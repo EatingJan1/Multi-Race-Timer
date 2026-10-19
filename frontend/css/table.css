@@ -1,0 +1,464 @@
+/* Table Design */
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 0.5rem;
+}
+
+th {
+    text-align: left;
+    padding: 1rem;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.05);
+    font-family: 'Schibsted Grotesk', sans-serif;
+}
+
+td {
+    padding: 1.25rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    transition: all 0.2s ease;
+}
+
+tr {
+    cursor: pointer;
+    border-left: 4px solid transparent;
+
+}
+
+tr:has(.status-running) {
+    border-left: 4px solid var(--accent-green);
+    background: rgba(34, 197, 94, 0.03);
+}
+
+tr:has(.status-finished) {
+    border-left: 4px solid var(--accent-red);
+}
+
+tr:hover td {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+tr.active-row td {
+    background: rgba(99, 102, 241, 0.08);
+    border-top: 1px solid rgba(99, 102, 241, 0.3);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* Status Badges */
+.status-badge {
+    padding: 0.35rem 0.8rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.status-ready {
+    background: rgba(148, 163, 184, 0.15);
+    color: #94a3b8;
+}
+
+.status-running {
+    background: rgba(34, 197, 94, 0.2);
+    color: #4ade80;
+}
+
+.status-finished {
+    background: rgba(239, 68, 68, 0.2);
+    color: #f87171;
+}
+
+/* Tag Badges */
+.tag-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+
+.tag-badge {
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    padding: 0.1rem 0.6rem;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.center-tags {
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+/* Ranking Styling */
+.rank-col {
+    font-weight: 800;
+    color: var(--primary);
+}
+
+.diff-col {
+    font-family: monospace;
+    color: var(--accent-red);
+    font-weight: 700;
+}
+
+.best-time {
+    font-family: monospace;
+    color: var(--accent-green);
+    font-weight: 700;
+}
+
+/* Live Timer in Table */
+.row-live-timer {
+    font-family: monospace;
+    color: var(--accent-green);
+    font-weight: 700;
+}
+
+    /* Card-Based List Layout for Mobile */
+    #raceTable thead,
+    #publicResultsTable thead {
+        display: none;
+    }
+
+    #raceTable,
+    #raceTable tbody,
+    #raceTable tr,
+    #raceTable td,
+    #publicResultsTable,
+    #publicResultsTable tbody,
+    #publicResultsTable tr,
+    #publicResultsTable td {
+        display: block;
+        width: 100%;
+    }
+
+    #publicResultsTable td {
+        display: block;
+        width: 100%;
+    }
+
+    #raceTable tr,
+    #publicResultsTable tr {
+        margin-bottom: 1rem;
+        background: rgba(30, 41, 59, 0.4);
+        border: 1px solid var(--card-border);
+        border-radius: 20px;
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.65rem;
+        padding: 1.25rem;
+        transition: transform 0.2s ease;
+    }
+
+    #publicResultsTable tr:has(td[data-label="Platz"]:contains("1.")) {
+        border-color: rgba(234, 179, 8, 0.4);
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(234, 179, 8, 0.05) 100%);
+        box-shadow: 0 10px 30px -10px rgba(234, 179, 8, 0.2);
+    }
+
+    /* Target first place specifically if :contains is not supported (standard CSS fallback) */
+    #publicResultsTable tr.rank-1 {
+        border-color: rgba(234, 179, 8, 0.5);
+        background: linear-gradient(135deg, rgba(30, 41, 59, 0.6) 0%, rgba(234, 179, 8, 0.1) 100%);
+    }
+
+    #raceTable tr {
+        grid-template-areas:
+            "number name"
+            "status rank"
+            "times times"
+            "actions actions";
+    }
+
+    #publicResultsTable tr {
+        grid-template-areas:
+            "number name"
+            "status rank"
+            "dev dev"
+            "tags tags";
+    }
+
+    #raceTable td,
+    #publicResultsTable td {
+        padding: 0;
+        background: transparent !important;
+        border: none !important;
+    }
+
+    /* Map Data to Grid Areas */
+    #raceTable td[data-label="Startnr."],
+    #publicResultsTable td[data-label="Startnr."] {
+        grid-area: number;
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: var(--primary);
+    }
+
+    #raceTable td[data-label="Name"],
+    #publicResultsTable td[data-label="Name"] {
+        grid-area: name;
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-align: right;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    #raceTable td[data-label="Status"],
+    #publicResultsTable td[data-label="Status"] {
+        grid-area: status;
+        padding-top: 0.25rem;
+    }
+
+    /* For public results, if finished, Dauer and Platz share the middle row */
+    #publicResultsTable td[data-label="Dauer"] {
+        grid-area: status;
+        /* Use status area for time if finished */
+        font-family: monospace;
+        font-weight: 700;
+        color: var(--accent-green);
+        display: flex;
+        align-items: center;
+    }
+
+    #publicResultsTable td[data-label="Dauer"]::before {
+        content: "Zeit: ";
+        font-size: 0.7rem;
+        opacity: 0.6;
+        margin-right: 4px;
+    }
+
+    #raceTable td[data-label="Platz"],
+    #publicResultsTable td[data-label="Platz"] {
+        grid-area: rank;
+        text-align: right;
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: var(--primary);
+        line-height: 1;
+    }
+
+    #publicResultsTable td[data-label="Platz"] {
+        color: var(--text-main);
+    }
+
+    #publicResultsTable tr.rank-1 td[data-label="Platz"] {
+        color: #eab308;
+        text-shadow: 0 0 15px rgba(234, 179, 8, 0.4);
+    }
+
+    #publicResultsTable td[data-label="Kategorie"] {
+        grid-area: tags;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding-top: 0.75rem !important;
+        margin-top: 0.25rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        letter-spacing: 0.02em;
+    }
+
+    #publicResultsTable td[data-label="Abweichung"] {
+        grid-area: dev;
+        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+        padding-top: 0.5rem !important;
+        margin-top: 0.25rem;
+        display: flex;
+        align-items: center;
+        font-family: monospace;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    #publicResultsTable td[data-label="Abweichung"]::before {
+        content: "Abw: ";
+        font-size: 0.7rem;
+        opacity: 0.6;
+        margin-right: 4px;
+        font-weight: normal;
+        font-family: 'Outfit', sans-serif;
+    }
+
+    #publicResultsTable td[data-label="Kategorie"]::before {
+        content: "Kategorie: ";
+        opacity: 0.6;
+        margin-right: 4px;
+    }
+
+    /* Race Table Specific Timing Row */
+    #raceTable td[data-label="Startzeit"] {
+        grid-area: times;
+        grid-row: 3;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+        padding-top: 0.5rem !important;
+        margin-top: 0.25rem;
+    }
+
+    #raceTable td[data-label="Endzeit"] {
+        grid-column: 1;
+        grid-row: 4;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    #raceTable td[data-label="Dauer"] {
+        grid-column: 2;
+        grid-row: 3;
+        text-align: right;
+        justify-content: flex-end;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+        display: flex;
+        align-items: center;
+    }
+
+    #raceTable td[data-label="Rückstand"] {
+        grid-column: 2;
+        grid-row: 4;
+        text-align: right;
+        justify-content: flex-end;
+        display: flex;
+        align-items: center;
+        font-size: 0.85rem;
+        color: var(--accent-red);
+    }
+
+    /* Actions Row */
+    #raceTable td[data-label="Aktionen"] {
+        grid-area: actions;
+        border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+        padding-top: 0.75rem !important;
+        margin-top: 0.5rem;
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+    }
+
+    /* Labels */
+    #raceTable td[data-label="Startzeit"]::before {
+        content: "Start:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
+    }
+
+    #raceTable td[data-label="Endzeit"]::before {
+        content: "Ende:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
+    }
+
+    #raceTable td[data-label="Dauer"]::before {
+        content: "Dauer:";
+        margin-right: 0.5rem;
+        opacity: 0.6;
+        font-weight: 400;
+        font-size: 0.8rem;
+    }
+
+    #publicResultsTable td[data-label="Status"] .status-badge {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.6rem;
+    }
+
+    /* If status is the only thing in the middle row, let it be left-aligned */
+    #publicResultsTable td[data-label="Status"] {
+        justify-content: flex-start;
+        display: flex;
+    }
+
+    #publicResultsTable tr:hover {
+        transform: translateY(-2px);
+        background: rgba(30, 41, 59, 0.6);
+    }
+
+    /* Hide unneeded labels */
+    #raceTable td[data-label="Startnr."]::before,
+    #raceTable td[data-label="Name"]::before,
+    #raceTable td[data-label="Platz"]::before,
+    #raceTable td[data-label="Status"]::before,
+    #raceTable td[data-label="Rückstand"]::before,
+    #raceTable td[data-label="Aktionen"]::before,
+    #publicResultsTable td[data-label="Startnr."]::before,
+    #publicResultsTable td[data-label="Name"]::before,
+    #publicResultsTable td[data-label="Platz"]::before,
+    #publicResultsTable td[data-label="Status"]::before {
+        display: none;
+    }
+
+    /* Safe Area for bottom scrolling */
+    .table-container {
+        padding-bottom: 3rem;
+    }
+
+
+    .columnConfig {
+        display: none;
+    }
+
+    .footer-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+
+        gap: 0.75rem 0.5rem;
+        text-align: center;
+        padding: 0.5rem;
+    }
+
+    .reg-header {
+        display: table;
+
+    }
+
+
+
+}
+
+
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.7;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
