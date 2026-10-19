@@ -8,6 +8,8 @@ COPY *.png /usr/share/nginx/html/
 COPY *.mp3 /usr/share/nginx/html/
 COPY manifest.json /usr/share/nginx/html/
 COPY icons /usr/share/nginx/html/icons
+COPY js /usr/share/nginx/html/js
+COPY css /usr/share/nginx/html/css
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/conf.d/default.conf

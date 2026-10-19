@@ -34,13 +34,7 @@ if (activeSectionEl) {
     });
 }
 
-// No Permission Overlay Button
-const noPermReturnBtn = document.getElementById('noPermReturnBtn');
-if (noPermReturnBtn) {
-    noPermReturnBtn.addEventListener('click', () => {
-        if (typeof showLandingPage === 'function') showLandingPage();
-    });
-}
+
 
 // Window Globals für HTML Event-Handler (onclick="...")
 window.downloadSignedPdf = typeof downloadSignedPdf !== 'undefined' ? downloadSignedPdf : null;
